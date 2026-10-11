@@ -1,0 +1,27 @@
+# General
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Java
+backend/target/
+backend/.idea/
+
+# Model artifacts
+*.onnx
+uploads/
