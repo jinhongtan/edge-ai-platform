@@ -1,9 +1,7 @@
 {
   "family": "edge-ai-backend",
   "networkMode": "awsvpc",
-  "requiresCompatibilities": [
-    "FARGATE"
-  ],
+  "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
   "executionRoleArn": "arn:aws:iam::872342236809:role/ecsTaskExecutionRole",
