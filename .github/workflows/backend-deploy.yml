@@ -9,7 +9,7 @@ on:
       - ".github/workflows/backend-deploy.yml"
 
   push:
-    branches: [main]
+    branches: [main, release]
     paths:
       - "backend/**"
       - "deploy/ecs/backend-task-definition.json"
@@ -44,7 +44,7 @@ jobs:
       id-token: write
 
     env:
-      AWS_REGION: us-east-1
+      AWS_REGION: us-west-2
       ECR_REPOSITORY: edge-ai-backend
       ECS_CLUSTER: edge-ai-cluster
       ECS_SERVICE: edge-ai-backend
