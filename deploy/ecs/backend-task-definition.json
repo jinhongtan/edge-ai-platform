@@ -16,6 +16,22 @@
           "protocol": "tcp"
         }
       ],
+      "environment": [
+        {
+          "name": "SPRING_DATASOURCE_URL",
+          "value": "jdbc:postgresql://edgeaidb.ctjaamwkeixb.us-west-2.rds.amazonaws.com:5432/postgres"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "SPRING_DATASOURCE_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:us-west-2:872342236809:secret:rds!db-d3fab716-2e1b-43dd-b340-d420938fbf82-QWooto:username::"
+        },
+        {
+          "name": "SPRING_DATASOURCE_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:us-west-2:872342236809:secret:rds!db-d3fab716-2e1b-43dd-b340-d420938fbf82-QWooto:password::"
+        }
+      ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
