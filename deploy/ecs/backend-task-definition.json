@@ -15,7 +15,15 @@
           "containerPort": 8080,
           "protocol": "tcp"
         }
-      ]
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/edge-ai-backend",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "backend"
+        }
+      }
     }
   ]
 }
