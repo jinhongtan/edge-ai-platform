@@ -24,7 +24,7 @@ Worker validation checks size, ONNX parsing/checker validity, and extracts graph
 
 ## API and persistence
 
-Spring Web controllers delegate to services and return JSON. `/health` is an infrastructure-friendly status response. List endpoints currently return empty arrays. JPA/PostgreSQL is configured for subsequent metadata/job persistence; no placeholder entities are created. CORS is configured for the local Vite origin in application configuration.
+Spring Web controllers delegate to services and return JSON. `/health` is an infrastructure-friendly status response. List endpoints currently return empty arrays. `GET /api/v1/compatibility-reports` returns HTTP 200 with `{"data": []}` through the catalog service; report generation, compatibility evaluation, and persistence remain planned. JPA/PostgreSQL is configured for subsequent metadata/job persistence; no placeholder entities are created. CORS is configured for the local Vite origin in application configuration.
 
 The worker inspection result includes file size, ONNX IR/opsets, and input/output tensors (name, element type, and shape). A future persisted model record should add model identity and a backend-computed file digest. Compatibility reports should identify model, target, runtime, status, reasons, and evidence/source. Unknown capability must remain unknown; parse success alone is not a compatibility result.
 

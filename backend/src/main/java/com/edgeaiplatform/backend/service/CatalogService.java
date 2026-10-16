@@ -7,5 +7,6 @@ import org.springframework.stereotype.Service;
 public class CatalogService {
     public List<Object> models() { return List.of(); }
     public List<Object> hardware() { return List.of(); }
+    public List<Object> compatibilityReports() { return List.of(); }
     public List<Object> deployments() { return List.of(); }
 }

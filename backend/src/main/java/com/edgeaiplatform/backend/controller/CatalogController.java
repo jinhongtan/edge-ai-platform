@@ -15,5 +15,6 @@ public class CatalogController {
 
     @GetMapping("/models") public ApiResponse<List<Object>> models() { return new ApiResponse<>(catalogService.models()); }
     @GetMapping("/hardware") public ApiResponse<List<Object>> hardware() { return new ApiResponse<>(catalogService.hardware()); }
+    @GetMapping("/compatibility-reports") public ApiResponse<List<Object>> compatibilityReports() { return new ApiResponse<>(catalogService.compatibilityReports()); }
     @GetMapping("/deployments") public ApiResponse<List<Object>> deployments() { return new ApiResponse<>(catalogService.deployments()); }
 }

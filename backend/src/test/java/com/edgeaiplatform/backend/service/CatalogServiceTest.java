@@ -10,5 +10,6 @@ class CatalogServiceTest {
         assertTrue(service.models().isEmpty());
         assertTrue(service.hardware().isEmpty());
         assertTrue(service.deployments().isEmpty());
+        assertTrue(service.compatibilityReports().isEmpty());
     }
 }

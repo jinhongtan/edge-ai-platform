@@ -20,6 +20,14 @@ class ApiControllerTest {
     @Test void healthRespondsUp() throws Exception {
         mvc.perform(get("/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"));
     }
+    @Test void compatibilityReportsReturnsEmptyArray() throws Exception {
+        when(catalogService.compatibilityReports()).thenReturn(List.of());
+        mvc.perform(get("/api/v1/compatibility-reports"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
     @Test void listEndpointsReturnEmptyArrays() throws Exception {
         when(catalogService.models()).thenReturn(List.of());
         when(catalogService.hardware()).thenReturn(List.of());

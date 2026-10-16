@@ -48,7 +48,7 @@ python -m pip install -e ".[test]"
 python -m onnx_worker --help
 ```
 
-The frontend currently labels its sample cards as mock data. The worker is a Python library/CLI, not an HTTP service. Backend endpoints are `GET /health`, `/api/v1/models`, `/api/v1/hardware`, and `/api/v1/deployments`.
+The frontend currently labels its sample cards as mock data. The worker is a Python library/CLI, not an HTTP service. Backend endpoints are `GET /health`, `/api/v1/models`, `/api/v1/hardware`, `/api/v1/compatibility-reports`, and `/api/v1/deployments`. The compatibility report list currently returns `{"data": []}`; compatibility evaluation and report persistence are not implemented.
 
 ## Checks
 
