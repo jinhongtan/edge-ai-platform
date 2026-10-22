@@ -9,17 +9,6 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-  servlet:
-    multipart:
-      max-file-size: ${APP_UPLOAD_MAX_BYTES:104857600}
-      max-request-size: ${APP_UPLOAD_MAX_BYTES:104857600}
 app:
   cors:
     allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:http://localhost:5173}
-  upload:
-    max-bytes: ${APP_UPLOAD_MAX_BYTES:104857600}
-    storage-dir: ${APP_UPLOAD_STORAGE_DIR:${java.io.tmpdir}/edge-ai-platform-models}
-  worker:
-    python: ${APP_WORKER_PYTHON:python}
-    timeout-seconds: ${APP_WORKER_TIMEOUT_SECONDS:30}
-    working-directory: ${APP_WORKER_WORKING_DIRECTORY:}
