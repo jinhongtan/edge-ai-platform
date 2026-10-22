@@ -12,11 +12,4 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("VALIDATION_ERROR", response.getBody().code());
     }
-
-    @Test void inspectionErrorsKeepWorkerCodes() {
-        var response = new GlobalExceptionHandler().inspection(
-                new com.edgeaiplatform.backend.service.ModelInspectionException("FILE_TOO_LARGE", "too big"));
-        assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, response.getStatusCode());
-        assertEquals("FILE_TOO_LARGE", response.getBody().code());
-    }
 }

@@ -7,6 +7,7 @@ class CatalogServiceTest {
     private final CatalogService service = new CatalogService();
 
     @Test void initialCatalogsAreEmpty() {
+        assertTrue(service.models().isEmpty());
         assertTrue(service.hardware().isEmpty());
         assertTrue(service.deployments().isEmpty());
         assertTrue(service.compatibilityReports().isEmpty());
