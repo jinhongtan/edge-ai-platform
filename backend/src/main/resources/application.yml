@@ -9,6 +9,20 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
 app:
   cors:
     allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:http://localhost:5173}
+  storage:
+    directory: ${APP_STORAGE_DIRECTORY:uploads/models}
+    max-bytes: ${APP_STORAGE_MAX_BYTES:104857600}
+  inspector:
+    command:
+      - ${APP_INSPECTOR_EXECUTABLE:python}
+      - -m
+      - onnx_worker.cli
+    timeout: ${APP_INSPECTOR_TIMEOUT:30s}
+    max-output-bytes: ${APP_INSPECTOR_MAX_OUTPUT_BYTES:1048576}

@@ -1,0 +1,8 @@
+.compatibility-card { max-width: 430px; margin-top: 12px; padding: 18px; border: 1px solid #d9e0eb; border-radius: 10px; background: #fff; box-shadow: 0 4px 16px rgba(24, 34, 49, .06); }.compatibility-operators summary { cursor: pointer; font: 600 12px Manrope, sans-serif; color: #3459d7; }.compatibility-operators[open] summary { margin-bottom: 6px; }
+.compatibility-card h3 { margin: 0; font: 700 16px Manrope, sans-serif; color: #182231; }
+.compatibility-status { display: grid; justify-items: center; gap: 6px; margin: 20px 0; }
+.compatibility-status b { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; font-size: 29px; color: #fff; background: #188a5b; }
+.compatibility-status strong { font: 700 18px Manrope, sans-serif; letter-spacing: .5px; }
+.status-warning .compatibility-status b { background: #b87800; }.status-incompatible .compatibility-status b { background: #c83b35; }
+.compatibility-group { display: grid; gap: 5px; margin-top: 16px; }.compatibility-group h4 { margin: 0; font: 600 12px Manrope, sans-serif; color: #778396; text-transform: uppercase; letter-spacing: .7px; }.compatibility-group > span { font: 600 14px Manrope, sans-serif; }.compatibility-group small, .compatibility-note { color: #6f7d94; font-size: 11px; }
+.compatibility-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #eef1f5; font-size: 12px; }.compatibility-row b { display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; color: #fff; }.compatibility-row .pass { background: #188a5b; }.compatibility-row .fail { background: #c83b35; }.compatibility-note { display: block; margin-top: 17px; }

@@ -4,7 +4,7 @@ A monorepo scaffold for uploading ONNX models, validating their structure, inspe
 
 ## MVP scope
 
-The current scaffold provides a dashboard shell, REST list/health endpoints, an ONNX inspection library/CLI, and architecture for incrementally delivering upload, compatibility and job workflows. It does **not** compile models for vendor hardware, deploy to physical devices, or benchmark inference. No compatibility is inferred solely from successful parsing.
+The current scaffold provides a dashboard, bounded local ONNX upload, REST list/health endpoints, an ONNX inspection library/CLI, and a Java process adapter for inspection. It does **not** compile models for vendor hardware, deploy to physical devices, or benchmark inference. No compatibility is inferred solely from successful parsing.
 
 ## Stack
 
@@ -23,10 +23,23 @@ Java 21, Node.js LTS and npm, Python 3.12+, PostgreSQL 15+. Maven 3.9+ can be us
 
 ## Local development
 
-Backend (set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` for PostgreSQL):
+Install the model worker first so uploads can be inspected. Then run the API and UI.
+
+Model worker:
+
+```powershell
+cd model-worker
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[test]"
+python -m onnx_worker.cli --help
+```
+
+Backend (from a new terminal; PostgreSQL is not required for local uploads):
 
 ```powershell
 cd backend
+$env:APP_INSPECTOR_EXECUTABLE = "..\model-worker\.venv\Scripts\python.exe"
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -38,17 +51,11 @@ npm ci
 npm run dev
 ```
 
-Model worker:
+Open http://localhost:5173 and use **Upload a model**. Files are stored under `backend/uploads/models/` when the API is started from `backend/`. The Vite dev server proxies `/api` to port 8080.
 
-```powershell
-cd model-worker
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[test]"
-python -m onnx_worker --help
-```
+If `python` is already on PATH and the worker is installed into that interpreter, you can omit `APP_INSPECTOR_EXECUTABLE`. Override storage with `APP_STORAGE_DIRECTORY` and the 100 MiB limit with `APP_STORAGE_MAX_BYTES`.
 
-The frontend currently labels its sample cards as mock data. The worker is a Python library/CLI, not an HTTP service. Backend endpoints are `GET /health`, `/api/v1/models`, `/api/v1/hardware`, `/api/v1/compatibility-reports`, and `/api/v1/deployments`. The compatibility report list currently returns `{"data": []}`; compatibility evaluation and report persistence are not implemented.
+The worker is a Python library/CLI, not an HTTP service. Backend endpoints include `GET /health`, `GET|POST /api/v1/models`, `/api/v1/hardware`, `/api/v1/compatibility-reports`, and `/api/v1/deployments`. Hardware, compatibility, and deployment lists currently return empty arrays; compatibility evaluation is not implemented.
 
 ## Checks
 
@@ -62,6 +69,6 @@ CI uses `backend/mvnw test`. The npm lockfile and Maven Wrapper scripts are comm
 
 ## Status and next steps
 
-Implemented: health and empty list APIs, dashboard shell/mock state, Python ONNX validation and tensor metadata extraction, docs and component tests. Not yet implemented: upload persistence, API-to-worker invocation, hardware registry, compatibility evaluation, deployment job mutations/packages, real hardware support.
+Implemented: health API, local ONNX upload to disk, model list/metadata API, dashboard upload UI, Python ONNX validation and tensor metadata extraction, Java CLI process adapter, docs and component tests. Not yet implemented: PostgreSQL metadata persistence, hardware registry, compatibility evaluation, deployment job mutations/packages, real hardware support.
 
-Recommended next: add bounded upload persistence and an isolated local-process worker adapter with size limits and contract tests.
+Recommended next: persist model records in PostgreSQL and add evidence-based hardware compatibility reports.

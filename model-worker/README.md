@@ -10,4 +10,4 @@ python -m pytest
 onnx-worker path\to\model.onnx
 ```
 
-The JSON CLI returns `{success, data}` or `{success: false, error: {code, message}}`. The Java integration boundary is a future `ModelInspector` adapter that can invoke this CLI with argument-safe process creation, a bounded timeout, and capped output. No Java process adapter is currently implemented.
+The JSON CLI returns `{success, data}` or `{success: false, error: {code, message}}`. A successful inspection includes file size, ONNX IR version, opsets, graph inputs and outputs, distinct operators, per-operator node counts, and the total elements in dense graph initializers as `parameter_count`. The Java `LocalProcessModelInspector` invokes this CLI with argument-safe process creation, a bounded timeout, and capped output.

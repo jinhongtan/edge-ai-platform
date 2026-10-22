@@ -34,6 +34,30 @@ def _tensor(value_info: Any, onnx: Any) -> dict[str, Any]:
     }
 
 
+def _operator_name(node: Any) -> str:
+    """Return a stable operator identifier, including a non-default domain."""
+    return f"{node.domain}::{node.op_type}" if node.domain else node.op_type
+
+
+def _operator_counts(model: Any) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for node in model.graph.node:
+        name = _operator_name(node)
+        counts[name] = counts.get(name, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _parameter_count(model: Any) -> int:
+    """Count elements in dense graph initializers without reading tensor data."""
+    total = 0
+    for initializer in model.graph.initializer:
+        elements = 1
+        for dimension in initializer.dims:
+            elements *= dimension
+        total += elements
+    return total
+
+
 def inspect_model(path: str | Path, max_bytes: int = MAX_MODEL_BYTES) -> dict[str, Any]:
     """Inspect an ONNX model without running its graph or exposing local paths."""
     file_path = Path(path)
@@ -63,6 +87,7 @@ def inspect_model(path: str | Path, max_bytes: int = MAX_MODEL_BYTES) -> dict[st
     inputs = [_tensor(value, onnx) for value in model.graph.input if value.name not in initializers]
     outputs = [_tensor(value, onnx) for value in model.graph.output]
     opsets = [{"domain": item.domain, "version": item.version} for item in model.opset_import]
+    operator_counts = _operator_counts(model)
     return {
         "valid": True,
         "file_size_bytes": size,
@@ -70,4 +95,7 @@ def inspect_model(path: str | Path, max_bytes: int = MAX_MODEL_BYTES) -> dict[st
         "opsets": opsets,
         "inputs": inputs,
         "outputs": outputs,
+        "operators": list(operator_counts),
+        "operator_counts": operator_counts,
+        "parameter_count": _parameter_count(model),
     }

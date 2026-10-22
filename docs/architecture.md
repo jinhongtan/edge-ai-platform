@@ -2,15 +2,15 @@
 
 ## Components
 
-The React/Vite frontend calls Spring Boot REST APIs. Spring owns request validation, application services, metadata persistence, and deployment job lifecycle. The Python worker is a separately runnable package responsible only for ONNX validation and metadata extraction. It is not an HTTP service and is not part of the Java runtime. Future hardware adapters own vendor compiler/runtime interactions.
+The React/Vite frontend calls Spring Boot REST APIs. Spring owns request validation, application services, local model storage, and deployment job lifecycle. The Python worker is a separately runnable package responsible only for ONNX validation and metadata extraction. It is not an HTTP service and is not part of the Java runtime. Future hardware adapters own vendor compiler/runtime interactions.
 
 ```mermaid
 flowchart LR
   U[User] --> FE[React TypeScript frontend]
-  FE -->|REST JSON| API[Spring Boot API]
+  FE -->|REST JSON / multipart| API[Spring Boot API]
   API --> S[Application services]
-  S --> DB[(PostgreSQL / JPA)]
-  S -. future local process adapter .-> W[Python ONNX worker]
+  S --> FS[Local model storage]
+  S --> W[Python ONNX worker CLI]
   S --> H[Hardware capability registry]
   S --> J[Deployment job records]
   J -. future adapter .-> V[Vendor SDK and edge device]
@@ -18,15 +18,21 @@ flowchart LR
 
 ## Upload and inspection
 
-Planned upload flow: frontend posts a multipart ONNX file to Spring. Spring enforces configured size/type limits, writes it to controlled storage, and requests inspection through the Java `ModelInspector` interface and its `ModelInspection` result records. A future `LocalProcessModelInspector` can invoke the worker CLI using an argument vector and a bounded timeout, exchange JSON on stdin/stdout, and never invoke a shell. The initial backend scaffold has no upload endpoint or process invocation. The worker exposes Python functions and a JSON CLI contract only; the Java boundary is currently interface-only.
+The frontend posts a multipart ONNX file to `POST /api/v1/models`. Spring enforces configured size and `.onnx` type limits, writes the file to a controlled directory outside web roots, computes a SHA-256 digest, and then inspects it through `ModelInspector`. `LocalProcessModelInspector` invokes the worker CLI with an argument vector and a bounded timeout, reads capped JSON on stdout, and never uses a shell. Accepted uploads persist `metadata.json` beside the stored model so the local catalog survives process restarts without PostgreSQL; an inspection failure is recorded as `INVALID` with its safe code and message, rather than deleting the uploaded file.
 
 Worker validation checks size, ONNX parsing/checker validity, and extracts graph input/output names, element types, and dimensions. It does not execute uploaded models. Errors are structured and should not disclose local paths.
 
+`GET /api/v1/models` returns stored model identity, digest, timestamps, validation status, and inspection metadata when validation succeeds. File paths are not exposed.
+
+## Compatibility check V1
+
+`GET /api/v1/hardware` exposes the initial configurable NVIDIA Jetson Orin Nano Super profile. `POST /api/v1/models/{modelId}/compatibility-check` consumes the stored worker analysis rather than re-parsing the model, deterministically checks operators, input/output precision, dynamic input shapes, and the configured default-domain opset range, then persists the latest result as `compatibility.json` beside that model. A result is `INCOMPATIBLE` for blocking findings, `WARNING` for dynamic shapes, otherwise `COMPATIBLE`. This is static compatibility analysis only; it does not build TensorRT engines or run on hardware.
+
 ## API and persistence
 
-Spring Web controllers delegate to services and return JSON. `/health` is an infrastructure-friendly status response. List endpoints currently return empty arrays. `GET /api/v1/compatibility-reports` returns HTTP 200 with `{"data": []}` through the catalog service; report generation, compatibility evaluation, and persistence remain planned. JPA/PostgreSQL is configured for subsequent metadata/job persistence; no placeholder entities are created. CORS is configured for the local Vite origin in application configuration.
+Spring Web controllers delegate to services and return JSON. `/health` is an infrastructure-friendly status response. Hardware, compatibility report, and deployment list endpoints currently return empty arrays. `GET /api/v1/compatibility-reports` returns HTTP 200 with `{"data": []}` through the catalog service; report generation, compatibility evaluation, and PostgreSQL persistence remain planned. Datasource/JPA auto-configuration is excluded until those records exist. CORS is configured for the local Vite origin in application configuration, and the Vite dev server proxies `/api` to the API.
 
-The worker inspection result includes file size, ONNX IR/opsets, and input/output tensors (name, element type, and shape). A future persisted model record should add model identity and a backend-computed file digest. Compatibility reports should identify model, target, runtime, status, reasons, and evidence/source. Unknown capability must remain unknown; parse success alone is not a compatibility result.
+The worker inspection result includes file size, ONNX IR version, opsets, input/output tensors (name, element type, and shape), distinct operators, per-operator node counts, and a parameter count. Parameter count is the sum of dense graph-initializer elements; it does not execute the model or load external tensor data. Persisted model records add model identity and a backend-computed file digest. Compatibility reports should identify model, target, runtime, status, reasons, and evidence/source. Unknown capability must remain unknown; parse success alone is not a compatibility result.
 
 ## Jobs
 
