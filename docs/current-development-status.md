@@ -28,16 +28,25 @@ Last updated: 2026-10-21
 - The latest result is persisted as `compatibility.json` beside its model.
 - The React UI lets the user run the Jetson check and displays the target, operator coverage, precision support, shape and opset details, blocking findings, and warnings.
 
+### Build request foundation
+
+- `POST /api/v1/builds` creates a locally persisted `QUEUED` request for a valid, static-shape ONNX model whose latest Jetson compatibility result is `COMPATIBLE` or `WARNING`. Only FP32 and a bounded workspace are accepted.
+- `GET /api/v1/builds/{buildId}` and `GET /api/v1/models/{modelId}/builds` expose these requests. The UI can create and display a queued FP32 build request after compatibility checking.
+- The UI lets the user set the bounded workspace, explains warning-result risk, and polls the build endpoint for stage/status changes. While local worker dispatch is absent, a request truthfully remains `QUEUED`.
+- The worker package contains a tested TensorRT `trtexec` provider. It uses argument-safe subprocess invocation and rejects missing, empty, or escaped artifacts.
+- A disabled-by-default local dispatcher can claim one request at a time and run the TensorRT CLI on the same Jetson. Enable it only when the configured Python environment has this worker package and `trtexec`. It writes `model.engine` and `build.log` locally, then reports `COMPLETED` or `FAILED`; completion still does not claim runtime inference validation. AWS S3/queue integration is a future optional deployment adapter, not a current dependency.
+
 ## Current storage and runtime model
 
 - Model and compatibility metadata use local filesystem persistence under `backend/uploads/models/` by default.
 - The worker is a local Python CLI process, not an HTTP service.
 - The project includes PostgreSQL dependencies/configuration, but JPA and datasource auto-configuration are currently disabled; no database-backed model, profile, or compatibility persistence is implemented.
 - There is no S3 integration in the current codebase.
+- The build-service direction is local filesystem storage and locally managed Jetson workers; cloud storage/queue configuration is deferred.
 
 ## Not implemented
 
-- TensorRT engine building or vendor compilation.
+- End-to-end TensorRT engine building or vendor compilation (the isolated provider exists, but dispatch and artifact handling are not integrated).
 - Execution on Jetson or any physical device.
 - Benchmarking, deployment packages, or device deployment.
 - Hardware compatibility beyond the initial Jetson profile.

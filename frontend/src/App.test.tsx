@@ -30,32 +30,12 @@ describe('dashboard', () => {
   it('uploads an onnx file and lists the stored model', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.mocked(fetch)
-    fetchMock
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [] }) } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: {
-            id: 'model-1',
-            fileName: 'tiny.onnx',
-            digestSha256: 'abc',
-            uploadedAt: '2026-01-01T00:00:00Z',
-            inspection: { fileSizeBytes: 12, irVersion: 9, opsets: [], inputs: [{ name: 'features', elementType: 'FLOAT', shape: [1, 3] }], outputs: [] },
-          },
-        }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: [{
-            id: 'model-1',
-            fileName: 'tiny.onnx',
-            digestSha256: 'abc',
-            uploadedAt: '2026-01-01T00:00:00Z',
-            inspection: { fileSizeBytes: 12, irVersion: 9, opsets: [], inputs: [{ name: 'features', elementType: 'FLOAT', shape: [1, 3] }], outputs: [] },
-          }],
-        }),
-      } as Response)
+    const model = { id: 'model-1', fileName: 'tiny.onnx', digestSha256: 'abc', uploadedAt: '2026-01-01T00:00:00Z', inspection: { fileSizeBytes: 12, irVersion: 9, opsets: [], inputs: [{ name: 'features', elementType: 'FLOAT', shape: [1, 3] }], outputs: [] } }
+    fetchMock.mockImplementation(async (input, init) => {
+      if (input === '/api/v1/models' && init?.method === 'POST') return { ok: true, json: async () => ({ data: model }) } as Response
+      if (input === '/api/v1/models') return { ok: true, json: async () => ({ data: [model] }) } as Response
+      return { ok: true, json: async () => ({ data: [] }) } as Response
+    })
 
     render(<App />)
     const file = new File([new Uint8Array([1, 2, 3])], 'tiny.onnx', { type: 'application/octet-stream' })

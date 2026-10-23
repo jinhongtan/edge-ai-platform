@@ -45,6 +45,10 @@ public class GlobalExceptionHandler {
     }
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> notFound(ResourceNotFoundException ex) { return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError("NOT_FOUND", ex.getMessage(), Map.of(), Instant.now())); }
+    @ExceptionHandler({IllegalArgumentException.class})
+    public ResponseEntity<ApiError> invalidRequest(IllegalArgumentException ex) { return ResponseEntity.badRequest().body(new ApiError("VALIDATION_ERROR", ex.getMessage(), Map.of(), Instant.now())); }
+    @ExceptionHandler(InvalidBuildStateException.class)
+    public ResponseEntity<ApiError> invalidBuildState(InvalidBuildStateException ex) { return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError("INVALID_BUILD_STATE", ex.getMessage(), Map.of(), Instant.now())); }
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> unexpected(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiError("INTERNAL_ERROR", "An unexpected error occurred", Map.of(), Instant.now()));
