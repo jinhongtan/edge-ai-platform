@@ -1,6 +1,6 @@
 # Current Development Status
 
-Last updated: 2026-10-21
+Last updated: 2026-10-22
 
 ## Implemented
 
@@ -32,13 +32,15 @@ Last updated: 2026-10-21
 
 - `POST /api/v1/builds` creates a locally persisted `QUEUED` request for a valid, static-shape ONNX model whose latest Jetson compatibility result is `COMPATIBLE` or `WARNING`. Only FP32 and a bounded workspace are accepted.
 - `GET /api/v1/builds/{buildId}` and `GET /api/v1/models/{modelId}/builds` expose these requests. The UI can create and display a queued FP32 build request after compatibility checking.
-- The UI lets the user set the bounded workspace, explains warning-result risk, and polls the build endpoint for stage/status changes. While local worker dispatch is absent, a request truthfully remains `QUEUED`.
-- The worker package contains a tested TensorRT `trtexec` provider. It uses argument-safe subprocess invocation and rejects missing, empty, or escaped artifacts.
-- A disabled-by-default local dispatcher can claim one request at a time and run the TensorRT CLI on the same Jetson. Enable it only when the configured Python environment has this worker package and `trtexec`. It writes `model.engine` and `build.log` locally, then reports `COMPLETED` or `FAILED`; completion still does not claim runtime inference validation. AWS S3/queue integration is a future optional deployment adapter, not a current dependency.
+- The UI lets the user set the bounded workspace, explains compatibility-warning risk, submits an asynchronous request, and polls the build endpoint for stage/status changes.
+- The worker package contains a tested TensorRT `trtexec` provider. It uses argument-safe subprocess invocation, an isolated per-build directory, and rejects missing, empty, or escaped artifacts.
+- A disabled-by-default local dispatcher claims one job at a time and runs the TensorRT CLI on the same Jetson. When the configured Python environment has `onnx_worker` installed and `trtexec` is on `PATH`, it copies the ONNX input to the build directory, writes `model.engine` and `build.log` locally, then records `COMPLETED` or `FAILED`.
+- A completed job means TensorRT produced a non-empty local engine. It does **not** prove inference executes correctly or meets a performance target.
 
 ## Current storage and runtime model
 
 - Model and compatibility metadata use local filesystem persistence under `backend/uploads/models/` by default.
+- Build records use local JSON files under `backend/uploads/builds/`; each build's isolated directory contains its copied input and, when successful, its engine and log.
 - The worker is a local Python CLI process, not an HTTP service.
 - The project includes PostgreSQL dependencies/configuration, but JPA and datasource auto-configuration are currently disabled; no database-backed model, profile, or compatibility persistence is implemented.
 - There is no S3 integration in the current codebase.
@@ -46,16 +48,20 @@ Last updated: 2026-10-21
 
 ## Not implemented
 
-- End-to-end TensorRT engine building or vendor compilation (the isolated provider exists, but dispatch and artifact handling are not integrated).
-- Execution on Jetson or any physical device.
+- Jetson validation in this repository/environment. A real engine build requires a Jetson with JetPack/TensorRT and an enabled local dispatcher; this Windows development environment cannot produce a Jetson TensorRT engine.
+- Engine download API, artifact retention policy, build cancellation, retry policy, or worker concurrency beyond one local build at a time.
+- TensorRT inference validation or performance benchmarking.
 - Benchmarking, deployment packages, or device deployment.
 - Hardware compatibility beyond the initial Jetson profile.
 - Authentication, authorization, model ownership, and multi-tenant access control.
 - Asynchronous compatibility jobs.
 - Database migrations/repositories for models, hardware profiles, or compatibility results.
+- External ONNX-data artifact handling for builds.
 
 ## Validation notes
 
 - Worker tests and frontend TypeScript checks have been run successfully during the current development work.
 - Backend Maven tests should be run from a terminal configured with Java 21: `cd backend; .\mvnw.cmd clean test`.
+- The backend test suite compiles the local queue and dispatcher source, and the worker tests cover TensorRT command construction; TensorRT itself has not been exercised here because no Jetson/TensorRT installation is available.
+- Local queue validation requires a real Jetson: install JetPack/TensorRT, make `trtexec` available on `PATH`, install `onnx_worker` in the configured Python environment, set `APP_BUILD_ENABLED=true`, and start the backend on that device.
 - A `COMPATIBLE` result is static profile analysis only. It must not be represented as proof that TensorRT can build the model or that it executes correctly on Jetson hardware.
