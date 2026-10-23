@@ -30,6 +30,7 @@ export type ApiError = {
 }
 export type HardwareProfile = { id: string; vendor: string; name: string; architecture: string; runtime: string; supportedPrecisions: string[]; supportedOperators: string[]; minimumOpset: number | null; maximumOpset: number | null }
 export type CompatibilityResult = { status: 'COMPATIBLE' | 'INCOMPATIBLE' | 'WARNING'; unsupportedOperators: { operator: string; count: number; reason: string }[]; warnings: string[]; supportedPrecisions: string[] }
+export type BuildJob = { id: string; modelId: string; hardwareId: string; precision: 'FP32'; workspaceMiB: number; status: string; stage: string; message: string; createdAt: string; updatedAt: string }
 
 async function readError(response: Response): Promise<ApiError> {
   try {
@@ -67,3 +68,5 @@ export async function uploadModel(file: File): Promise<ModelSummary> {
 }
 export async function listHardware(): Promise<HardwareProfile[]> { const response = await fetch('/api/v1/hardware'); if (!response.ok) throw await readError(response); return ((await response.json()) as { data: HardwareProfile[] }).data ?? [] }
 export async function checkCompatibility(modelId: string, hardwareId: string): Promise<CompatibilityResult> { const response = await fetch(`/api/v1/models/${modelId}/compatibility-check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hardwareId }) }); if (!response.ok) throw await readError(response); return ((await response.json()) as { data: CompatibilityResult }).data }
+export async function createBuild(modelId: string, hardwareId: string, workspaceMiB: number): Promise<BuildJob> { const response = await fetch('/api/v1/builds', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modelId, hardwareId, precision: 'FP32', options: { workspaceMiB } }) }); if (!response.ok) throw await readError(response); return ((await response.json()) as { data: BuildJob }).data }
+export async function getBuild(buildId: string): Promise<BuildJob> { const response = await fetch(`/api/v1/builds/${buildId}`); if (!response.ok) throw await readError(response); return ((await response.json()) as { data: BuildJob }).data }

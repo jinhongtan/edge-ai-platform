@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import './compatibility.css'
-import { checkCompatibility, listHardware, listModels, uploadModel, type CompatibilityResult, type HardwareProfile, type ModelSummary } from './api'
+import { checkCompatibility, createBuild, getBuild, listHardware, listModels, uploadModel, type BuildJob, type CompatibilityResult, type HardwareProfile, type ModelSummary } from './api'
 
 function formatTensors(values: NonNullable<ModelSummary['inspection']>['inputs']): string {
   if (values.length === 0) {
@@ -72,6 +72,8 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [hardware, setHardware] = useState<HardwareProfile[]>([])
   const [results, setResults] = useState<Record<string, CompatibilityResult>>({})
+  const [builds, setBuilds] = useState<Record<string, BuildJob>>({})
+  const [workspaceMiB, setWorkspaceMiB] = useState(1024)
 
   async function refreshModels() {
     const data = await listModels()
@@ -87,6 +89,16 @@ export default function App() {
   useEffect(() => { listHardware().then(setHardware).catch(() => setHardware([])) }, [])
 
   async function runCompatibility(modelId: string) { if (!hardware[0]) return; setBusy(true); try { const result = await checkCompatibility(modelId, hardware[0].id); setResults((current) => ({ ...current, [modelId]: result })) } catch (cause) { setError(cause && typeof cause === 'object' && 'message' in cause ? String(cause.message) : 'Compatibility check failed.') } finally { setBusy(false) } }
+  async function requestBuild(modelId: string) { if (!hardware[0]) return; setBusy(true); setError(null); try { const build = await createBuild(modelId, hardware[0].id, workspaceMiB); setBuilds((current) => ({ ...current, [modelId]: build })) } catch (cause) { setError(cause && typeof cause === 'object' && 'message' in cause ? String(cause.message) : 'Build request failed.') } finally { setBusy(false) } }
+
+  useEffect(() => {
+    const active = Object.entries(builds).filter(([, build]) => !['COMPLETED', 'FAILED', 'CANCELLED'].includes(build.status))
+    if (active.length === 0) return
+    const timer = window.setTimeout(() => {
+      void Promise.all(active.map(async ([modelId, build]) => [modelId, await getBuild(build.id)] as const)).then((updates) => setBuilds((current) => ({ ...current, ...Object.fromEntries(updates) }))).catch(() => setError('Could not refresh build status. Retrying…'))
+    }, 3000)
+    return () => window.clearTimeout(timer)
+  }, [builds])
 
   async function onFileSelected(file: File | undefined) {
     if (!file || busy) {
@@ -162,7 +174,7 @@ export default function App() {
               <span>Parameters: {model.inspection.parameterCount?.toLocaleString() ?? '0'}</span>
               </>}
               {!model.inspection && <span>{model.validationMessage ?? 'Inspection did not return metadata.'}</span>}
-              {model.inspection && hardware[0] && <><button type="button" disabled={busy} onClick={() => void runCompatibility(model.id)}>{busy ? 'Checking compatibility…' : `Check compatibility: ${hardware[0].name}`}</button>{results[model.id] && <CompatibilityCard result={results[model.id]} profile={hardware[0]} inspection={model.inspection} />}</>}
+              {model.inspection && hardware[0] && <><button type="button" disabled={busy} onClick={() => void runCompatibility(model.id)}>{busy ? 'Checking compatibility…' : `Check compatibility: ${hardware[0].name}`}</button>{results[model.id] && <><CompatibilityCard result={results[model.id]} profile={hardware[0]} inspection={model.inspection} />{results[model.id].status !== 'INCOMPATIBLE' && <div className="build-panel"><h4>Build for {hardware[0].name}</h4>{results[model.id].status === 'WARNING' && <p className="build-warning">Compatibility has warnings. The build can be attempted, but it is not guaranteed.</p>}<label>Workspace (MiB)<input aria-label={`Workspace for ${model.fileName}`} type="number" min="1" max="1024" value={workspaceMiB} disabled={busy} onChange={(event) => setWorkspaceMiB(Math.max(1, Math.min(1024, Number(event.target.value) || 1)))} /></label><small>FP32 only. A successful engine build does not verify runtime inference.</small><button type="button" disabled={busy} onClick={() => void requestBuild(model.id)}>{busy ? 'Submitting build…' : 'Queue FP32 build'}</button>{builds[model.id] && <p aria-live="polite"><strong>Build {builds[model.id].status}</strong> · {builds[model.id].stage}<br />{builds[model.id].message}<br /><small>Polling for worker updates.</small></p>}</div>}</>}</>}
             </li>
           ))}
         </ul>

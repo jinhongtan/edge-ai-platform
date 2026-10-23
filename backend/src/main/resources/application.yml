@@ -26,3 +26,12 @@ app:
       - onnx_worker.cli
     timeout: ${APP_INSPECTOR_TIMEOUT:30s}
     max-output-bytes: ${APP_INSPECTOR_MAX_OUTPUT_BYTES:1048576}
+  build:
+    directory: ${APP_BUILD_DIRECTORY:uploads/builds}
+    max-workspace-mi-b: ${APP_BUILD_MAX_WORKSPACE_MI_B:1024}
+    enabled: ${APP_BUILD_ENABLED:false}
+    command:
+      - ${APP_BUILD_EXECUTABLE:python}
+      - -m
+      - onnx_worker.build.cli
+    timeout: ${APP_BUILD_TIMEOUT:30m}

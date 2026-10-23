@@ -23,6 +23,8 @@ Java 21, Node.js LTS and npm, Python 3.12+, PostgreSQL 15+. Maven 3.9+ can be us
 
 ## Local development
 
+Build-service development is local-only: models and build-request records use controlled filesystem paths, and TensorRT compilation is intended for a locally managed Jetson. AWS services such as S3 and SQS are not required or configured. Cloud adapters may be introduced later without changing the local workflow.
+
 Install the model worker first so uploads can be inspected. Then run the API and UI.
 
 Model worker:
