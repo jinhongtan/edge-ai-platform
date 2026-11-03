@@ -1,0 +1,8 @@
+control_plane_url: "https://api.example.com"
+credential_file: "/etc/edge-agent/device-credential"
+work_dir: "/var/lib/edge-agent/jobs"
+heartbeat_interval_seconds: 30
+poll_interval_seconds: 10
+max_parallel_jobs: 1
+max_model_bytes: 2147483648
+job_timeout_seconds: 1800

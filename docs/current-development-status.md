@@ -37,6 +37,12 @@ Last updated: 2026-10-22
 - A disabled-by-default local dispatcher claims one job at a time and runs the TensorRT CLI on the same Jetson. When the configured Python environment has `onnx_worker` installed and `trtexec` is on `PATH`, it copies the ONNX input to the build directory, writes `model.engine` and `build.log` locally, then records `COMPLETED` or `FAILED`.
 - A completed job means TensorRT produced a non-empty local engine. It does **not** prove inference executes correctly or meets a performance target.
 
+### Edge agent foundation
+
+- A disabled-by-default, file-backed local development adapter issues single-use enrollment tokens, enrolls device identities with hashed credentials, supports explicit approval, and accepts heartbeats from approved devices.
+- The Python package now exposes `edge-agent doctor`, `edge-agent enroll --token-stdin`, and `edge-agent version`. Its hardware probe reports only detected TensorRT/CUDA capability facts and handles missing Jetson tooling.
+- A PostgreSQL schema artifact for devices, jobs, events, and artifacts exists for the future persistence migration but is not active while datasource auto-configuration is disabled.
+
 ## Current storage and runtime model
 
 - Model and compatibility metadata use local filesystem persistence under `backend/uploads/models/` by default.
@@ -57,6 +63,7 @@ Last updated: 2026-10-22
 - Asynchronous compatibility jobs.
 - Database migrations/repositories for models, hardware profiles, or compatibility results.
 - External ONNX-data artifact handling for builds.
+- Edge job claim/lease APIs, agent run loop, artifact transfers, TensorRT runtime validation, GPU benchmarking, and frontend device/job workflows.
 
 ## Validation notes
 
