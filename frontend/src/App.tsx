@@ -2,11 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import './compatibility.css'
 import './auth.css'
 import './dashboard.css'
-import './dashboard-clean.css'
-import './dashboard-nav.css'
-import './dashboard-nav-v2.css'
-import './dashboard-nav-v3.css'
-import './dashboard-layout-fix.css'
+import './dashboard-redesign.css'
 import { checkCompatibility, createBuild, getBuild, listHardware, listModels, login, register, uploadModel, type AuthSession, type BuildJob, type CompatibilityResult, type HardwareProfile, type ModelSummary } from './api'
 
 function formatTensors(values: NonNullable<ModelSummary['inspection']>['inputs']): string {
