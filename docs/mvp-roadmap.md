@@ -6,6 +6,8 @@
 ## Phase 2: ONNX upload, validation, and metadata inspection
 **Deliverables:** bounded upload API, controlled file storage, worker adapter, model metadata API. **Acceptance:** valid small ONNX is stored and inspected; invalid/oversized files return safe actionable errors. **Tests:** upload boundaries, generated ONNX fixture, worker missing dependency, adapter timeout/error.
 
+Status: local upload, disk catalog, metadata API, and process adapter are implemented. Compatibility evaluation is not.
+
 ## Phase 3: Hardware capability registry and compatibility reports
 **Deliverables:** explicit target/runtime capability records and evidence-based report API. **Acceptance:** supported/unsupported/unknown capabilities are distinguished and rationale shown. **Tests:** capability matching, unknown cases, API serialization.
 

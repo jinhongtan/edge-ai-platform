@@ -10,7 +10,7 @@ Build a platform that inspects ONNX models and reports evidence-based compatibil
 - `docs/`: architecture, API contracts, and roadmap.
 - `tests/`: cross-component or contract-level checks.
 
-Inspect existing code and repository instructions before editing. Preserve user work, avoid unrelated refactors and unnecessary dependencies. Update docs when architecture or API contracts change.
+Inspect existing code and repository instructions before editing. Preserve user work, avoid unrelated refactors and unnecessary dependencies. Update docs when architecture or API contracts change. Consult `docs/current-development-status.md` when a task depends on what the application currently implements, persists, or deliberately does not support; keep that status document accurate when scope changes.
 
 ## Conventions
 - Java: Java 21, small Spring services, constructor injection, records for DTOs, Jakarta validation, explicit error responses, no business logic in controllers.

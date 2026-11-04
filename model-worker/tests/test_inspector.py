@@ -27,6 +27,9 @@ def test_valid_model_metadata(tiny_model: Path) -> None:
     assert result["inputs"] == [{"name": "features", "element_type": "FLOAT", "shape": [1, 3]}]
     assert result["outputs"] == [{"name": "scores", "element_type": "FLOAT", "shape": [1, 2]}]
     assert result["opsets"] == [{"domain": "", "version": 13}]
+    assert result["operators"] == ["MatMul"]
+    assert result["operator_counts"] == {"MatMul": 1}
+    assert result["parameter_count"] == 6
 
 
 @pytest.mark.parametrize("name,content,code", [("broken.onnx", b"not an onnx model", "INVALID_ONNX"), ("empty.onnx", b"", "EMPTY_FILE")])
