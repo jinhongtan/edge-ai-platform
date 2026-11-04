@@ -1,6 +1,10 @@
 server:
   port: ${SERVER_PORT:8080}
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/edge_ai}
     username: ${SPRING_DATASOURCE_USERNAME:edge_ai}
