@@ -51,6 +51,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> invalidBuildState(InvalidBuildStateException ex) { return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError("INVALID_BUILD_STATE", ex.getMessage(), Map.of(), Instant.now())); }
     @ExceptionHandler(AgentAccessException.class)
     public ResponseEntity<ApiError> agentAccess(AgentAccessException ex) { return ResponseEntity.status(ex.status()).body(new ApiError(ex.code(), ex.getMessage(), Map.of(), Instant.now())); }
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<ApiError> auth(AuthException ex) { return ResponseEntity.status(ex.status()).body(new ApiError(ex.code(), ex.getMessage(), Map.of(), Instant.now())); }
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> unexpected(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiError("INTERNAL_ERROR", "An unexpected error occurred", Map.of(), Instant.now()));

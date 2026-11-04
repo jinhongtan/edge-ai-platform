@@ -43,6 +43,12 @@ Last updated: 2026-10-22
 - The Python package now exposes `edge-agent doctor`, `edge-agent enroll --token-stdin`, and `edge-agent version`. Its hardware probe reports only detected TensorRT/CUDA capability facts and handles missing Jetson tooling.
 - A PostgreSQL schema artifact for devices, jobs, events, and artifacts exists for the future persistence migration but is not active while datasource auto-configuration is disabled.
 
+### Local authentication foundation
+
+- `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, and `GET /api/v1/auth/me` support local-development accounts and opaque bearer sessions.
+- Passwords are salted PBKDF2-HMAC-SHA-256 hashes; plaintext passwords and raw session tokens are never persisted. Sessions are memory-only and expire after the configured TTL.
+- This does not yet enforce ownership or tenant isolation on models, builds, or devices; do not use it as production authentication until database-backed identities and authorization are added.
+
 ## Current storage and runtime model
 
 - Model and compatibility metadata use local filesystem persistence under `backend/uploads/models/` by default.
@@ -59,7 +65,7 @@ Last updated: 2026-10-22
 - TensorRT inference validation or performance benchmarking.
 - Benchmarking, deployment packages, or device deployment.
 - Hardware compatibility beyond the initial Jetson profile.
-- Authentication, authorization, model ownership, and multi-tenant access control.
+- Authorization, model ownership, and multi-tenant access control.
 - Asynchronous compatibility jobs.
 - Database migrations/repositories for models, hardware profiles, or compatibility results.
 - External ONNX-data artifact handling for builds.

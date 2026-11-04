@@ -4,6 +4,7 @@ import com.edgeaiplatform.backend.config.InspectorProperties;
 import com.edgeaiplatform.backend.config.StorageProperties;
 import com.edgeaiplatform.backend.config.BuildProperties;
 import com.edgeaiplatform.backend.config.EdgeAgentProperties;
+import com.edgeaiplatform.backend.config.AuthProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -12,7 +13,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
-@EnableConfigurationProperties({StorageProperties.class, InspectorProperties.class, BuildProperties.class, EdgeAgentProperties.class})
+@EnableConfigurationProperties({StorageProperties.class, InspectorProperties.class, BuildProperties.class, EdgeAgentProperties.class, AuthProperties.class})
 @EnableScheduling
 public class BackendApplication {
     public static void main(String[] args) { SpringApplication.run(BackendApplication.class, args); }

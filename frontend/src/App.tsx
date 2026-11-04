@@ -1,6 +1,13 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import './compatibility.css'
-import { checkCompatibility, createBuild, getBuild, listHardware, listModels, uploadModel, type BuildJob, type CompatibilityResult, type HardwareProfile, type ModelSummary } from './api'
+import './auth.css'
+import './dashboard.css'
+import './dashboard-clean.css'
+import './dashboard-nav.css'
+import './dashboard-nav-v2.css'
+import './dashboard-nav-v3.css'
+import './dashboard-layout-fix.css'
+import { checkCompatibility, createBuild, getBuild, listHardware, listModels, login, register, uploadModel, type AuthSession, type BuildJob, type CompatibilityResult, type HardwareProfile, type ModelSummary } from './api'
 
 function formatTensors(values: NonNullable<ModelSummary['inspection']>['inputs']): string {
   if (values.length === 0) {
@@ -63,6 +70,31 @@ function CompatibilityCard({ result, profile, inspection }: { result: Compatibil
   </section>
 }
 
+function LandingPage({ onOpenWorkspace, onUpload, onSignIn, onRegister }: { onOpenWorkspace: () => void; onUpload: () => void; onSignIn: () => void; onRegister: () => void }) {
+  return <main className="landing-shell">
+    <nav className="landing-nav" aria-label="Main navigation"><a className="brand" href="#top"><span className="brand-mark">E</span> Edge AI Platform</a><div className="nav-links"><a href="#workflow">How it works</a><a href="#trust">Trust</a><button type="button" className="nav-sign-in" onClick={onSignIn}>Sign in</button><button type="button" className="nav-workspace" onClick={onRegister}>Create account <span>→</span></button></div></nav>
+    <section className="landing-hero" id="top"><div className="landing-copy"><p className="eyebrow">THE PRACTICAL PATH TO THE EDGE</p><h1>Know what your model needs <em>before</em> it meets a device.</h1><p className="landing-lede">Inspect ONNX models, assess target compatibility, and prepare evidence for real edge hardware—without overstating what has been verified.</p><div className="landing-actions"><button type="button" className="landing-primary" onClick={onUpload}>Upload an ONNX model <span>↑</span></button><button type="button" className="landing-text-button" onClick={onOpenWorkspace}>Explore workspace <span>→</span></button></div><p className="landing-note">Static analysis is available now. Hardware execution is reported only after real device validation.</p></div><div className="signal-field" aria-hidden="true"><div className="signal-core"><b>ONNX</b><span>MODEL</span></div><div className="signal-ring ring-one"/><div className="signal-ring ring-two"/><div className="signal-card card-input">INPUT<br/><b>1 × 3 × 224 × 224</b></div><div className="signal-card card-target">TARGET<br/><b>JETSON</b></div><div className="signal-card card-evidence">EVIDENCE<br/><b>CHECKED</b></div></div></section>
+    <section className="proof-strip" aria-label="Current platform capabilities"><span>ONNX inspection</span><i/><span>Compatibility assessment</span><i/><span>Evidence-aware results</span></section>
+    <section className="workflow" id="workflow"><div><p className="eyebrow">A CLEARER DEPLOYMENT HANDOFF</p><h2>Move from file to informed decision.</h2></div><ol><li><span>01</span><div><h3>Inspect</h3><p>Parse model structure and interfaces without executing uploaded code.</p></div></li><li><span>02</span><div><h3>Assess</h3><p>Compare metadata against an explicit target capability profile.</p></div></li><li><span>03</span><div><h3>Build evidence</h3><p>Keep build, validation, and benchmark claims separate as the platform grows.</p></div></li></ol></section>
+    <section className="trust-panel" id="trust"><p className="eyebrow">BUILT FOR HONEST SIGNALS</p><h2>A compatible report is not a hardware promise.</h2><p>Compatibility is static analysis. A successful engine build, runtime validation, and benchmark each require their own evidence and are displayed distinctly.</p><button type="button" onClick={onOpenWorkspace}>See the workspace <span>→</span></button></section>
+    <footer className="landing-footer"><span>Edge AI Platform</span><span>Model inspection and compatibility workflow</span></footer>
+  </main>
+}
+
+function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: { mode: 'login' | 'register'; onBack: () => void; onSwitch: () => void; onAuthenticated: (session: AuthSession) => void }) {
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const isRegister = mode === 'register'
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true); setError(null)
+    const fields = new FormData(event.currentTarget)
+    try { onAuthenticated(isRegister ? await register(String(fields.get('email')), String(fields.get('organization')), String(fields.get('password'))) : await login(String(fields.get('email')), String(fields.get('password')))) }
+    catch (cause) { setError(cause && typeof cause === 'object' && 'message' in cause ? String(cause.message) : 'Authentication failed.') }
+    finally { setBusy(false) }
+  }
+  return <main className="auth-shell"><button type="button" className="brand brand-button" onClick={onBack}><span className="brand-mark">E</span> Edge AI Platform</button><section className="auth-card"><p className="eyebrow">{isRegister ? 'CREATE YOUR WORKSPACE' : 'WELCOME BACK'}</p><h1>{isRegister ? 'Start with a secure workspace.' : 'Sign in to your workspace.'}</h1><p>{isRegister ? 'Create an account to keep models, devices, and evidence scoped to your organization.' : 'Use your organization account to continue.'}</p><form onSubmit={(event) => void submit(event)}><label>Email<input name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>{isRegister && <label>Organization<input name="organization" autoComplete="organization" required placeholder="Your organization" /></label>}<label>Password<input name="password" type="password" autoComplete={isRegister ? 'new-password' : 'current-password'} required minLength={12} placeholder="At least 12 characters" /></label>{isRegister && <label className="checkbox-label"><input type="checkbox" required /> I understand model workloads execute only on approved edge devices.</label>}<button className="auth-submit" type="submit" disabled={busy}>{busy ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'} <span>→</span></button></form>{error && <p className="auth-notice" role="alert">{error}</p>}<p className="auth-switch">{isRegister ? 'Already have an account?' : 'New to Edge AI Platform?'} <button type="button" onClick={onSwitch}>{isRegister ? 'Sign in' : 'Create an account'}</button></p></section></main>
+}
+
 export default function App() {
   const fileInputId = useId()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -74,6 +106,10 @@ export default function App() {
   const [results, setResults] = useState<Record<string, CompatibilityResult>>({})
   const [builds, setBuilds] = useState<Record<string, BuildJob>>({})
   const [workspaceMiB, setWorkspaceMiB] = useState(1024)
+  const [view, setView] = useState<'landing' | 'workspace' | 'login' | 'register'>('landing')
+  const [session, setSession] = useState<AuthSession | null>(null)
+  const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  const [dashboardView, setDashboardView] = useState<'overview' | 'account'>('overview')
 
   async function refreshModels() {
     const data = await listModels()
@@ -123,8 +159,16 @@ export default function App() {
     }
   }
 
-  return <main className="shell">
-    <header className="topbar"><a className="brand" href="#home"><span className="brand-mark">E</span> Edge AI Platform</a><span className="status"><i /> Local uploads</span></header>
+  if (view === 'landing') return <LandingPage onOpenWorkspace={() => setView('workspace')} onUpload={() => { setView('workspace'); window.setTimeout(() => fileInput.current?.click(), 0) }} onSignIn={() => setView('login')} onRegister={() => setView('register')} />
+  if (view === 'login' || view === 'register') return <AuthPage mode={view} onBack={() => setView('landing')} onSwitch={() => setView(view === 'login' ? 'register' : 'login')} onAuthenticated={(nextSession) => { setSession(nextSession); setView('workspace') }} />
+
+  return <main className={`shell dashboard-shell ${sidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'} ${dashboardView === 'account' ? 'account-open' : ''}`}>
+    <aside className="dashboard-side-nav" aria-label="Workspace navigation"><button type="button" className="nav-toggle" aria-label={sidebarExpanded ? 'Collapse navigation' : 'Expand navigation'} onClick={() => setSidebarExpanded((current) => !current)}>☰</button><button type="button" className={dashboardView === 'overview' ? 'active' : ''} onClick={() => setDashboardView('overview')}><b>▦</b><span>Overview</span></button><a href="#models"><b>◫</b><span>Models</span></a><span className="nav-disabled"><b>⌘</b><span>Targets</span></span><span className="nav-disabled"><b>◎</b><span>Checks</span></span><span className="nav-disabled"><b>↗</b><span>Builds</span></span><button type="button" className={dashboardView === 'account' ? 'active nav-account' : 'nav-account'} onClick={() => setDashboardView('account')}><b>◉</b><span>Account</span></button></aside>
+    {dashboardView === 'account' && <section className="account-panel" aria-labelledby="account-title"><p className="eyebrow">ACCOUNT</p><h1 id="account-title">Your account</h1><dl><div><dt>Email</dt><dd>{session?.user.email ?? 'Not signed in'}</dd></div><div><dt>Organization</dt><dd>{session?.user.organization ?? 'Local workspace'}</dd></div></dl><p className="account-note">Profile editing and password changes need a dedicated account-update API and are not available yet.</p><button type="button" className="account-signout" onClick={() => { setSession(null); setView('landing') }}>Sign out</button></section>}
+    <header className="topbar"><button type="button" className="brand brand-button" onClick={() => setView('landing')}><span className="brand-mark">E</span> Edge AI Platform</button><div className="workspace-nav"><span className="status"><i /> {session ? session.user.email : 'Local uploads'}</span><button type="button" className="back-link" onClick={() => setView('landing')}>← Home</button></div></header>
+    <section className="dashboard-intro" aria-labelledby="dashboard-title"><div><p className="eyebrow">YOUR WORKSPACE</p><h1 id="dashboard-title">{session ? `Welcome back, ${session.user.organization}.` : 'Your deployment workspace.'}</h1><p>Manage model evidence, target checks, and build requests from one place. Status labels distinguish static assessment, successful builds, and real hardware proof.</p></div><div className="dashboard-actions"><label className="primary" htmlFor={fileInputId}>Upload ONNX <span>+</span></label><a href="#models">Review models →</a></div></section>
+    <section className="dashboard-summary" aria-label="Workspace summary"><article><span>MODELS</span><strong>{models.length}</strong><p>Uploaded ONNX files</p></article><article><span>TARGETS</span><strong>{hardware.length}</strong><p>Configured capability profiles</p></article><article><span>CHECKS</span><strong>{Object.keys(results).length}</strong><p>Static compatibility assessments</p></article><article><span>BUILDS</span><strong>{Object.keys(builds).length}</strong><p>Tracked build requests</p></article></section>
+    <section className="dashboard-next"><div><p className="eyebrow">NEXT BEST STEP</p><h2>{models.length ? 'Review a model before building.' : 'Add your first ONNX model.'}</h2><p>{models.length ? 'Run a target compatibility check to uncover static limitations before submitting an FP32 build request.' : 'Start with an ONNX file to inspect metadata, operators, inputs, and outputs safely.'}</p></div><a href={models.length ? '#models' : '#upload'}>{models.length ? 'Review models →' : 'Upload a model →'}</a></section>
     <section className="hero" id="home">
       <div className="eyebrow">MODEL DEPLOYMENT WORKSPACE</div>
       <h1>From model file<br />to edge ready.</h1>
@@ -148,7 +192,7 @@ export default function App() {
       <article className="card"><div className="card-top"><span className="icon icon-2">◎</span><span className="card-count">—</span></div><h3>Compatibility reports</h3><p>Reports require a model and target</p><a href="#home">View details <span>→</span></a></article>
       <article className="card"><div className="card-top"><span className="icon icon-3">↗</span><span className="card-count">—</span></div><h3>Deployment jobs</h3><p>No jobs available</p><a href="#home">View details <span>→</span></a></article>
     </section>
-    <section className="upload-panel" aria-labelledby="upload-title">
+    <section className="upload-panel" id="upload" aria-labelledby="upload-title">
       <div className="upload-symbol">↑</div>
       <div>
         <h2 id="upload-title">Start with a model</h2>
