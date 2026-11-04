@@ -35,3 +35,11 @@ app:
       - -m
       - onnx_worker.build.cli
     timeout: ${APP_BUILD_TIMEOUT:30m}
+  edge-agent:
+    enabled: ${APP_EDGE_AGENT_ENABLED:false}
+    directory: ${APP_EDGE_AGENT_DIRECTORY:uploads/edge-agents}
+    admin-key: ${APP_EDGE_AGENT_ADMIN_KEY:}
+    enrollment-token-ttl: ${APP_EDGE_AGENT_ENROLLMENT_TOKEN_TTL:15m}
+  auth:
+    directory: ${APP_AUTH_DIRECTORY:uploads/auth}
+    session-ttl: ${APP_AUTH_SESSION_TTL:8h}

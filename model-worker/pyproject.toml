@@ -14,6 +14,7 @@ test = ["pytest==8.3.4"]
 
 [project.scripts]
 onnx-worker = "onnx_worker.cli:main"
+edge-agent = "edge_agent.main:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
