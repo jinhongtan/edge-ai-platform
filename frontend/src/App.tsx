@@ -1,229 +1,56 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import './compatibility.css'
+import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import './core-ui.css'
+import './style.css'
 import './auth.css'
-import './dashboard.css'
-import './dashboard-clean.css'
-import './dashboard-nav.css'
-import './dashboard-nav-v2.css'
-import './dashboard-nav-v3.css'
-import './dashboard-layout-fix.css'
-import { checkCompatibility, createBuild, getBuild, listHardware, listModels, login, register, uploadModel, type AuthSession, type BuildJob, type CompatibilityResult, type HardwareProfile, type ModelSummary } from './api'
+import './landing-redesign.css'
+import { checkCompatibility, createBuild, getBuild, listHardware, listModels, login, register, uploadModel, type ApiError, type AuthSession, type BuildJob, type CompatibilityResult, type HardwareProfile, type ModelSummary } from './api'
 
-function formatTensors(values: NonNullable<ModelSummary['inspection']>['inputs']): string {
-  if (values.length === 0) {
-    return 'none'
-  }
-  return values.map((tensor) => {
-    const shape = tensor.shape.map((dimension) => dimension ?? '?').join(' × ')
-    return `${tensor.name}: ${tensor.elementType} [${shape}]`
-  }).join(', ')
+type Page = 'dashboard' | 'models' | 'devices' | 'deployments' | 'builds' | 'benchmarks' | 'artifacts' | 'account'
+type Notice = { tone: 'success' | 'error'; text: string } | null
+const nav: Array<{ page: Page; icon: string; label: string }> = [
+  { page: 'dashboard', icon: '⌂', label: 'Dashboard' }, { page: 'models', icon: '◇', label: 'Models' }, { page: 'devices', icon: '▣', label: 'Devices' }, { page: 'deployments', icon: '+', label: 'New deployment' }, { page: 'builds', icon: '◷', label: 'Builds' }, { page: 'benchmarks', icon: '↗', label: 'Benchmarks' }, { page: 'artifacts', icon: '□', label: 'Artifacts' },
+]
+const errorText = (error: unknown) => (error as ApiError)?.message ?? 'The request could not be completed. Confirm the API is running and try again.'
+function Status({ value }: { value: string }) { return <span className={`status status-${value.toLowerCase().replace(/[^a-z]+/g, '-')}`}>{value.replaceAll('_', ' ')}</span> }
+function Header({ eyebrow, title, description, children }: { eyebrow?: string; title: string; description: string; children?: React.ReactNode }) { return <header className="page-header"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1><p>{description}</p></div>{children && <div className="header-action">{children}</div>}</header> }
+function Empty({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) { return <section className="empty"><div className="empty-mark">◇</div><h2>{title}</h2><p>{body}</p>{action}</section> }
+
+function Auth({ mode, done, back, switchMode }: { mode: 'login' | 'register'; done: (value: AuthSession) => void; back: () => void; switchMode: (mode: 'login' | 'register') => void }) {
+  const [busy, setBusy] = useState(false), [error, setError] = useState(''); const email = useId(), organization = useId(), password = useId()
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); setBusy(true); setError(''); try { done(mode === 'login' ? await login(String(data.get('email')), String(data.get('password'))) : await register(String(data.get('email')), String(data.get('organization')), String(data.get('password')))) } catch (cause) { setError(errorText(cause)) } finally { setBusy(false) } }
+  const registerMode = mode === 'register'
+  return <main className="auth-shell"><button type="button" className="brand brand-button" onClick={back}><span className="brand-mark">E</span> Edge AI Platform</button><section className="auth-card"><p className="eyebrow">{registerMode ? 'CREATE YOUR WORKSPACE' : 'WELCOME BACK'}</p><h1>{registerMode ? 'Start with a secure workspace.' : 'Sign in to your workspace.'}</h1><p>{registerMode ? 'Create an account to keep models, devices, and evidence scoped to your organization.' : 'Use your organization account to continue.'}</p><form onSubmit={submit}><label htmlFor={email}>Email<input id={email} name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>{registerMode && <label htmlFor={organization}>Organization<input id={organization} name="organization" autoComplete="organization" required placeholder="Your organization" /></label>}<label htmlFor={password}>Password<input id={password} name="password" type="password" minLength={12} required autoComplete={registerMode ? 'new-password' : 'current-password'} placeholder="At least 12 characters" /></label>{registerMode && <label className="checkbox-label"><input type="checkbox" required /> I understand model workloads execute only on approved edge devices.</label>}<button className="auth-submit" disabled={busy}>{busy ? 'Please wait…' : registerMode ? 'Create account' : 'Sign in'} <span>→</span></button></form>{error && <p className="auth-notice" role="alert">{error}</p>}<p className="auth-switch">{registerMode ? 'Already have an account?' : 'New to Edge AI Platform?'} <button type="button" onClick={() => switchMode(registerMode ? 'login' : 'register')}>{registerMode ? 'Sign in' : 'Create an account'}</button></p></section></main>
+}
+function Landing({ open, authenticate }: { open: () => void; authenticate: (mode: 'login' | 'register') => void }) { return <main className="marketing"><nav className="marketing-nav" aria-label="Main navigation"><a className="marketing-brand" href="#top"><span>e</span> Edge AI Platform</a><div><a href="#workflow">Workflow</a><a href="#evidence">Evidence</a><button type="button" className="marketing-signin" onClick={() => authenticate('login')}>Sign in</button><button type="button" className="marketing-register" onClick={() => authenticate('register')}>Create account</button></div></nav><section className="marketing-hero" id="top"><div className="marketing-copy"><p className="marketing-kicker">EDGE DEPLOYMENT, WITH EVIDENCE</p><h1>Move an ONNX model toward the edge with clarity.</h1><p>Inspect model structure, assess an explicit hardware target, and create a build request. Each stage says exactly what has—and has not—been verified.</p><div className="marketing-actions"><button type="button" className="marketing-primary" onClick={open}>Open workspace <span>→</span></button><button type="button" className="marketing-link" onClick={() => authenticate('register')}>Start with an account</button></div><small>Static compatibility is not hardware validation.</small></div><div className="deployment-preview" aria-label="Illustration of deployment workflow"><div className="preview-top"><span>Deployment readiness</span><b>Static analysis</b></div><div className="preview-model"><span className="preview-dot"/><div><small>MODEL</small><strong>vision-classifier.onnx</strong></div><em>ANALYZED</em></div><div className="preview-flow"><span/><i>→</i><span/><i>→</i><span/></div><div className="preview-labels"><span>Model</span><span>Target</span><span>Build</span></div><div className="preview-target"><small>SELECTED TARGET</small><strong>NVIDIA Jetson</strong><p>Compatibility is checked against a registered capability profile.</p></div></div></section><section className="marketing-proof"><span>Safe ONNX inspection</span><span>Explicit compatibility evidence</span><span>Honest build status</span></section><section className="marketing-workflow" id="workflow"><header><p className="marketing-kicker">ONE CLEAR WORKFLOW</p><h2>From a model file to the next decision.</h2></header><div className="workflow-steps"><article><b>01</b><h3>Inspect</h3><p>Upload an ONNX file and view the metadata the platform can safely analyze.</p></article><article><b>02</b><h3>Assess</h3><p>Compare model facts with a defined target profile before you request a build.</p></article><article><b>03</b><h3>Build</h3><p>Track an FP32 build request separately from inference validation or benchmarks.</p></article></div></section><section className="marketing-evidence" id="evidence"><div><p className="marketing-kicker">NO IMPLIED RESULTS</p><h2>Evidence is carried forward, not assumed.</h2></div><p>A compatible static report does not claim an engine built, inference ran, or performance met a target. Those require their own device-side evidence.</p><button type="button" onClick={open}>Explore the workspace <span>→</span></button></section><footer className="marketing-footer"><span>Edge AI Platform</span><span>Model inspection · target assessment · build tracking</span></footer></main> }
+
+function Models({ models, reload, deploy, notify }: { models: ModelSummary[]; reload: () => Promise<void>; deploy: () => void; notify: (n: Notice) => void }) {
+  const input = useRef<HTMLInputElement>(null), [uploading, setUploading] = useState(false)
+  async function select(event: ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; if (!file) return; setUploading(true); try { await uploadModel(file); await reload(); notify({ tone: 'success', text: `${file.name} was uploaded and queued for inspection.` }) } catch (cause) { notify({ tone: 'error', text: errorText(cause) }) } finally { setUploading(false); event.target.value = '' } }
+  return <><Header eyebrow="Model library" title="Models" description="ONNX files stored by the current backend."><button className="primary-button" onClick={() => input.current?.click()} disabled={uploading}>{uploading ? 'Uploading…' : 'Upload ONNX'}</button><input className="visually-hidden" ref={input} type="file" accept=".onnx" onChange={select} /></Header>{models.length === 0 ? <Empty title="No models yet" body="Upload an ONNX model to inspect its metadata and assess an available target." action={<button className="primary-button" onClick={() => input.current?.click()}>Upload ONNX</button>} /> : <div className="data-card"><table><thead><tr><th>Model</th><th>Inspection</th><th>Uploaded</th><th /></tr></thead><tbody>{models.map(model => <tr key={model.id}><td><strong>{model.fileName}</strong><small>{model.inspection?.operators.length ?? 0} operators</small></td><td><Status value={model.validationStatus === 'VALID' ? 'ANALYZED' : 'INVALID'} /></td><td>{new Date(model.uploadedAt).toLocaleDateString()}</td><td><button className="table-action" onClick={deploy}>Use in deployment</button></td></tr>)}</tbody></table></div>}</>
 }
 
-function CompatibilityDetails({ result, profile, inspection }: { result: CompatibilityResult; profile: HardwareProfile; inspection: NonNullable<ModelSummary['inspection']> }) {
-  const operators = inspection.operators ?? []
-  const supportedOperators = operators.filter((operator) => profile.supportedOperators.includes(operator))
-  const dynamicInputs = inspection.inputs.filter((input) => input.shape.some((dimension) => dimension === null || typeof dimension === 'string'))
-  const opsets = inspection.opsets.filter((opset) => !opset.domain).map((opset) => opset.version).join(', ') || 'none'
-  const unsupportedOperators = result.unsupportedOperators.filter((item) => item.reason === 'Unsupported operator')
-  const precisionIssues = result.unsupportedOperators.filter((item) => item.reason === 'Unsupported input or output precision')
-  const opsetIssues = result.unsupportedOperators.filter((item) => item.reason === 'Outside configured supported opset range')
-  const check = (state: 'pass' | 'warning' | 'fail', title: string, detail: string) => <li className={`check-${state}`}><b>{state === 'pass' ? 'PASS' : state === 'warning' ? 'WARN' : 'FAIL'}</b><span><strong>{title}</strong>{detail}</span></li>
-  return <section className="compatibility-result" aria-label={`Compatibility result for ${profile.name}`}>
-    <h3>Compatibility result: {result.status}</h3>
-    <h4>Compatibility checklist</h4>
-    <ul className="compatibility-checklist">
-      {check(unsupportedOperators.length ? 'fail' : 'pass', 'Operators', unsupportedOperators.length ? `${unsupportedOperators.length} unsupported operator type(s).` : `${supportedOperators.length}/${operators.length} operator types match the profile.`)}
-      {check(precisionIssues.length ? 'fail' : 'pass', 'Input/output precision', precisionIssues.length ? precisionIssues.map((item) => item.operator).join(', ') : `${result.supportedPrecisions.join(', ')} supported by the target.`)}
-      {check(dynamicInputs.length ? 'warning' : 'pass', 'Input shapes', dynamicInputs.length ? `Dynamic shape: ${dynamicInputs.map((input) => input.name).join(', ')}.` : 'All analyzed input dimensions are static.')}
-      {check(opsetIssues.length ? 'fail' : 'pass', 'ONNX opset', `${opsets}${profile.minimumOpset !== null && profile.maximumOpset !== null ? `; profile range ${profile.minimumOpset}-${profile.maximumOpset}.` : ''}`)}
-    </ul>
-    <span>Target: {profile.vendor} {profile.name} · {profile.architecture} · {profile.runtime}</span>
-    <span>Operators: {supportedOperators.length}/{operators.length} in the initial target profile</span>
-    <span>Precision: {result.supportedPrecisions.join(', ')} supported by target</span>
-    <span>Input shapes: {dynamicInputs.length ? `dynamic (${dynamicInputs.map((input) => input.name).join(', ')})` : 'static'}</span>
-    <span>ONNX default-domain opset: {opsets}{profile.minimumOpset !== null && profile.maximumOpset !== null ? ` (profile range ${profile.minimumOpset}–${profile.maximumOpset})` : ''}</span>
-    {result.unsupportedOperators.length > 0 && <div><strong>Blocking findings</strong><ul>{result.unsupportedOperators.map((item) => <li key={`${item.operator}-${item.reason}`}>{item.operator} × {item.count}: {item.reason}</li>)}</ul></div>}
-    {result.warnings.length > 0 && <div><strong>Warnings</strong><ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}
-    <small>Static analysis only. This does not build a TensorRT engine or validate execution on Jetson hardware.</small>
-  </section>
+function Deployment({ models, hardware, reload, created, notify, go }: { models: ModelSummary[]; hardware: HardwareProfile[]; reload: () => Promise<void>; created: (job: BuildJob) => void; notify: (n: Notice) => void; go: (p: Page) => void }) {
+  const [step, setStep] = useState(1), [modelId, setModelId] = useState(''), [hardwareId, setHardwareId] = useState(''), [check, setCheck] = useState<CompatibilityResult | null>(null), [checking, setChecking] = useState(false), [workspace, setWorkspace] = useState(1024), [building, setBuilding] = useState(false); const input = useRef<HTMLInputElement>(null)
+  const model = models.find(item => item.id === modelId), target = hardware.find(item => item.id === hardwareId), canBuild = check?.status === 'COMPATIBLE' || check?.status === 'WARNING'
+  async function upload(event: ChangeEvent<HTMLInputElement>) { const value = event.target.files?.[0]; if (!value) return; try { const added = await uploadModel(value); await reload(); setModelId(added.id); notify({ tone: 'success', text: 'Model uploaded. Continue by selecting a target.' }) } catch (cause) { notify({ tone: 'error', text: errorText(cause) }) } finally { event.target.value = '' } }
+  async function compatibility() { if (!modelId || !hardwareId) return; setChecking(true); try { setCheck(await checkCompatibility(modelId, hardwareId)); setStep(3) } catch (cause) { notify({ tone: 'error', text: errorText(cause) }) } finally { setChecking(false) } }
+  async function build() { if (!modelId || !hardwareId || !canBuild) return; setBuilding(true); try { const job = await createBuild(modelId, hardwareId, workspace); created(job); notify({ tone: 'success', text: 'Build request created. It is not a device deployment.' }); go('builds') } catch (cause) { notify({ tone: 'error', text: errorText(cause) }) } finally { setBuilding(false) } }
+  return <><Header eyebrow="Guided workflow" title="New deployment" description="Create a build request after a static compatibility assessment. Device deployment is not available yet." /><ol className="stepper">{['Model', 'Target', 'Execution', 'Build', 'Results'].map((name, index) => <li className={step === index + 1 ? 'current' : step > index + 1 ? 'complete' : ''} key={name}><span>{index + 1}</span>{name}</li>)}</ol><section className="wizard-card">{step === 1 && <><h2>Select a model</h2><p>Choose a valid ONNX model, or upload one now.</p><div className="choice-list">{models.filter(item => item.validationStatus === 'VALID').map(item => <label className={`choice ${modelId === item.id ? 'selected' : ''}`} key={item.id}><input type="radio" name="model" checked={modelId === item.id} onChange={() => setModelId(item.id)} /><strong>{item.fileName}</strong><span>{item.inspection?.operators.length ?? 0} operators</span></label>)}</div><input className="visually-hidden" ref={input} type="file" accept=".onnx" onChange={upload} /><button className="secondary-button" onClick={() => input.current?.click()}>Upload ONNX</button><button className="primary-button" disabled={!modelId} onClick={() => setStep(2)}>Continue</button></>}{step === 2 && <><h2>Choose target hardware</h2><p>Compatibility is static profile analysis, not proof that an engine will build or run on hardware.</p><div className="hardware-grid">{hardware.map(item => <label className={`hardware-card ${hardwareId === item.id ? 'selected' : ''}`} key={item.id}><input type="radio" name="hardware" checked={hardwareId === item.id} onChange={() => { setHardwareId(item.id); setCheck(null) }} /><span className="hardware-vendor">{item.vendor}</span><strong>{item.name}</strong><small>{item.architecture} · {item.runtime}</small><small>{item.supportedPrecisions.join(', ')}</small></label>)}</div>{hardware.length === 0 && <p className="callout">No hardware profiles are available from the backend.</p>}<button className="secondary-button" onClick={() => setStep(1)}>Back</button><button className="primary-button" disabled={!hardwareId || checking} onClick={compatibility}>{checking ? 'Checking…' : 'Check compatibility'}</button></>}{step === 3 && <><h2>Execution location</h2><p>A connected-device execution flow is not available through the current API.</p><label className="choice selected"><input type="radio" checked readOnly /><strong>No device selected</strong><span>Create a build request only. It will not deploy or validate inference.</span></label><div className="unavailable"><strong>Own device and managed platform execution</strong><span>Unavailable until device claim and job APIs are implemented.</span></div><button className="secondary-button" onClick={() => setStep(2)}>Back</button><button className="primary-button" onClick={() => setStep(4)}>Continue</button></>}{step === 4 && <><h2>Build configuration</h2><p>{model?.fileName} · {target?.name}</p><label>Workspace limit (MiB)<input type="number" min="64" max="8192" value={workspace} onChange={event => setWorkspace(Number(event.target.value))} /></label>{check && <p className={`callout ${canBuild ? 'callout-ok' : 'callout-bad'}`}><Status value={check.status} /> {canBuild ? 'The static compatibility check allows a build request.' : 'The compatibility check blocks a build request.'}</p>}<p className="muted">Only FP32 is supported. This action creates a queued local build request; it does not benchmark, package, deploy, or verify runtime inference.</p><button className="secondary-button" onClick={() => setStep(3)}>Back</button><button className="primary-button" disabled={!canBuild || building} onClick={build}>{building ? 'Creating…' : 'Create build request'}</button></>}{step === 5 && <Empty title="Results are not available yet" body="The current backend has no result or artifact API." />}</section></>
 }
 
-void CompatibilityDetails
-
-function CompatibilityCard({ result, profile, inspection }: { result: CompatibilityResult; profile: HardwareProfile; inspection: NonNullable<ModelSummary['inspection']> }) {
-  const unsupported = new Map(result.unsupportedOperators.map((item) => [item.operator, item]))
-  const operators = inspection.operators ?? []
-  const statusMark = result.status === 'COMPATIBLE' ? '✓' : result.status === 'WARNING' ? '!' : '×'
-  const precisionRows = ['FP32', 'FP16', 'INT8']
-  const opsets = inspection.opsets.filter((opset) => !opset.domain).map((opset) => opset.version).join(', ') || 'none'
-  const dynamicInputs = inspection.inputs.filter((input) => input.shape.some((dimension) => dimension === null || typeof dimension === 'string'))
-  return <section className={`compatibility-card status-${result.status.toLowerCase()}`} aria-label={`Compatibility result for ${profile.name}`}>
-    <h3>Compatibility Result</h3>
-    <div className="compatibility-status"><b>{statusMark}</b><strong>{result.status}</strong></div>
-    <div className="compatibility-group"><h4>Target</h4><span>{profile.name}</span><small>{profile.architecture} · {profile.runtime}</small></div>
-    <div className="compatibility-group"><h4>ONNX Opset</h4><span>{opsets}</span><small>{profile.minimumOpset !== null && profile.maximumOpset !== null ? `Target profile range: ${profile.minimumOpset}-${profile.maximumOpset}` : 'No target opset range configured'}</small></div>
-    <div className="compatibility-group"><h4>Input shapes</h4>{inspection.inputs.map((input) => <span key={input.name}>{input.name}: [{input.shape.map((dimension) => dimension ?? '?').join(' × ')}]</span>)}<small>{dynamicInputs.length ? `Dynamic input shape: ${dynamicInputs.map((input) => input.name).join(', ')}` : 'All analyzed input dimensions are static.'}</small></div>
-    <details className="compatibility-group compatibility-operators"><summary>Operators ({operators.length})</summary>{operators.length === 0 ? <span>No analyzed operators</span> : operators.map((operator) => { const finding = unsupported.get(operator); return <div className="compatibility-row" key={operator}><span>{operator}{finding ? ` (${finding.count})` : ''}</span><b className={finding ? 'fail' : 'pass'}>{finding ? '×' : '✓'}</b></div> })}</details>
-    <div className="compatibility-group"><h4>Precision</h4>{precisionRows.map((precision) => <div className="compatibility-row" key={precision}><span>{precision}</span><b className={result.supportedPrecisions.includes(precision) ? 'pass' : 'fail'}>{result.supportedPrecisions.includes(precision) ? '✓' : '×'}</b></div>)}</div>
-    {result.warnings.length > 0 && <div className="compatibility-group"><h4>Warnings</h4>{result.warnings.map((warning) => <small key={warning}>{warning}</small>)}</div>}
-    <small className="compatibility-note">Static compatibility analysis only; no TensorRT build or Jetson execution was performed.</small>
-  </section>
-}
-
-function LandingPage({ onOpenWorkspace, onUpload, onSignIn, onRegister }: { onOpenWorkspace: () => void; onUpload: () => void; onSignIn: () => void; onRegister: () => void }) {
-  return <main className="landing-shell">
-    <nav className="landing-nav" aria-label="Main navigation"><a className="brand" href="#top"><span className="brand-mark">E</span> Edge AI Platform</a><div className="nav-links"><a href="#workflow">How it works</a><a href="#trust">Trust</a><button type="button" className="nav-sign-in" onClick={onSignIn}>Sign in</button><button type="button" className="nav-workspace" onClick={onRegister}>Create account <span>→</span></button></div></nav>
-    <section className="landing-hero" id="top"><div className="landing-copy"><p className="eyebrow">THE PRACTICAL PATH TO THE EDGE</p><h1>Know what your model needs <em>before</em> it meets a device.</h1><p className="landing-lede">Inspect ONNX models, assess target compatibility, and prepare evidence for real edge hardware—without overstating what has been verified.</p><div className="landing-actions"><button type="button" className="landing-primary" onClick={onUpload}>Upload an ONNX model <span>↑</span></button><button type="button" className="landing-text-button" onClick={onOpenWorkspace}>Explore workspace <span>→</span></button></div><p className="landing-note">Static analysis is available now. Hardware execution is reported only after real device validation.</p></div><div className="signal-field" aria-hidden="true"><div className="signal-core"><b>ONNX</b><span>MODEL</span></div><div className="signal-ring ring-one"/><div className="signal-ring ring-two"/><div className="signal-card card-input">INPUT<br/><b>1 × 3 × 224 × 224</b></div><div className="signal-card card-target">TARGET<br/><b>JETSON</b></div><div className="signal-card card-evidence">EVIDENCE<br/><b>CHECKED</b></div></div></section>
-    <section className="proof-strip" aria-label="Current platform capabilities"><span>ONNX inspection</span><i/><span>Compatibility assessment</span><i/><span>Evidence-aware results</span></section>
-    <section className="workflow" id="workflow"><div><p className="eyebrow">A CLEARER DEPLOYMENT HANDOFF</p><h2>Move from file to informed decision.</h2></div><ol><li><span>01</span><div><h3>Inspect</h3><p>Parse model structure and interfaces without executing uploaded code.</p></div></li><li><span>02</span><div><h3>Assess</h3><p>Compare metadata against an explicit target capability profile.</p></div></li><li><span>03</span><div><h3>Build evidence</h3><p>Keep build, validation, and benchmark claims separate as the platform grows.</p></div></li></ol></section>
-    <section className="trust-panel" id="trust"><p className="eyebrow">BUILT FOR HONEST SIGNALS</p><h2>A compatible report is not a hardware promise.</h2><p>Compatibility is static analysis. A successful engine build, runtime validation, and benchmark each require their own evidence and are displayed distinctly.</p><button type="button" onClick={onOpenWorkspace}>See the workspace <span>→</span></button></section>
-    <footer className="landing-footer"><span>Edge AI Platform</span><span>Model inspection and compatibility workflow</span></footer>
-  </main>
-}
-
-function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: { mode: 'login' | 'register'; onBack: () => void; onSwitch: () => void; onAuthenticated: (session: AuthSession) => void }) {
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const isRegister = mode === 'register'
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(null)
-    const fields = new FormData(event.currentTarget)
-    try { onAuthenticated(isRegister ? await register(String(fields.get('email')), String(fields.get('organization')), String(fields.get('password'))) : await login(String(fields.get('email')), String(fields.get('password')))) }
-    catch (cause) { setError(cause && typeof cause === 'object' && 'message' in cause ? String(cause.message) : 'Authentication failed.') }
-    finally { setBusy(false) }
-  }
-  return <main className="auth-shell"><button type="button" className="brand brand-button" onClick={onBack}><span className="brand-mark">E</span> Edge AI Platform</button><section className="auth-card"><p className="eyebrow">{isRegister ? 'CREATE YOUR WORKSPACE' : 'WELCOME BACK'}</p><h1>{isRegister ? 'Start with a secure workspace.' : 'Sign in to your workspace.'}</h1><p>{isRegister ? 'Create an account to keep models, devices, and evidence scoped to your organization.' : 'Use your organization account to continue.'}</p><form onSubmit={(event) => void submit(event)}><label>Email<input name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>{isRegister && <label>Organization<input name="organization" autoComplete="organization" required placeholder="Your organization" /></label>}<label>Password<input name="password" type="password" autoComplete={isRegister ? 'new-password' : 'current-password'} required minLength={12} placeholder="At least 12 characters" /></label>{isRegister && <label className="checkbox-label"><input type="checkbox" required /> I understand model workloads execute only on approved edge devices.</label>}<button className="auth-submit" type="submit" disabled={busy}>{busy ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'} <span>→</span></button></form>{error && <p className="auth-notice" role="alert">{error}</p>}<p className="auth-switch">{isRegister ? 'Already have an account?' : 'New to Edge AI Platform?'} <button type="button" onClick={onSwitch}>{isRegister ? 'Sign in' : 'Create an account'}</button></p></section></main>
-}
+function Builds({ jobs, refresh }: { jobs: BuildJob[]; refresh: () => Promise<void> }) { return <><Header eyebrow="Build tracking" title="Builds" description="Requests created in this browser session. The backend does not provide a workspace-wide build list."><button className="secondary-button" onClick={refresh}>Refresh</button></Header>{jobs.length === 0 ? <Empty title="No tracked builds" body="Create a compatible build request from the guided workflow." /> : <div className="data-card"><table><thead><tr><th>Build</th><th>Status</th><th>Stage</th><th>Updated</th></tr></thead><tbody>{jobs.map(job => <tr key={job.id}><td><strong>{job.id.slice(0, 8)}</strong><small>FP32 · {job.workspaceMiB} MiB</small></td><td><Status value={job.status} /></td><td>{job.stage}</td><td>{new Date(job.updatedAt).toLocaleString()}</td></tr>)}</tbody></table></div>}</> }
 
 export default function App() {
-  const fileInputId = useId()
-  const fileInput = useRef<HTMLInputElement>(null)
-  const [models, setModels] = useState<ModelSummary[]>([])
-  const [status, setStatus] = useState<string>('Loading models from local storage…')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [hardware, setHardware] = useState<HardwareProfile[]>([])
-  const [results, setResults] = useState<Record<string, CompatibilityResult>>({})
-  const [builds, setBuilds] = useState<Record<string, BuildJob>>({})
-  const [workspaceMiB, setWorkspaceMiB] = useState(1024)
-  const [view, setView] = useState<'landing' | 'workspace' | 'login' | 'register'>('landing')
-  const [session, setSession] = useState<AuthSession | null>(null)
-  const [sidebarExpanded, setSidebarExpanded] = useState(true)
-  const [dashboardView, setDashboardView] = useState<'overview' | 'account'>('overview')
-
-  async function refreshModels() {
-    const data = await listModels()
-    setModels(data)
-    setStatus(data.length === 0 ? 'No models stored locally yet.' : `${data.length} model${data.length === 1 ? '' : 's'} stored locally.`)
-  }
-
-  useEffect(() => {
-    refreshModels().catch(() => {
-      setStatus('API unavailable. Start the backend to store uploads locally.')
-    })
-  }, [])
-  useEffect(() => { listHardware().then(setHardware).catch(() => setHardware([])) }, [])
-
-  async function runCompatibility(modelId: string) { if (!hardware[0]) return; setBusy(true); try { const result = await checkCompatibility(modelId, hardware[0].id); setResults((current) => ({ ...current, [modelId]: result })) } catch (cause) { setError(cause && typeof cause === 'object' && 'message' in cause ? String(cause.message) : 'Compatibility check failed.') } finally { setBusy(false) } }
-  async function requestBuild(modelId: string) { if (!hardware[0]) return; setBusy(true); setError(null); try { const build = await createBuild(modelId, hardware[0].id, workspaceMiB); setBuilds((current) => ({ ...current, [modelId]: build })) } catch (cause) { setError(cause && typeof cause === 'object' && 'message' in cause ? String(cause.message) : 'Build request failed.') } finally { setBusy(false) } }
-
-  useEffect(() => {
-    const active = Object.entries(builds).filter(([, build]) => !['COMPLETED', 'FAILED', 'CANCELLED'].includes(build.status))
-    if (active.length === 0) return
-    const timer = window.setTimeout(() => {
-      void Promise.all(active.map(async ([modelId, build]) => [modelId, await getBuild(build.id)] as const)).then((updates) => setBuilds((current) => ({ ...current, ...Object.fromEntries(updates) }))).catch(() => setError('Could not refresh build status. Retrying…'))
-    }, 3000)
-    return () => window.clearTimeout(timer)
-  }, [builds])
-
-  async function onFileSelected(file: File | undefined) {
-    if (!file || busy) {
-      return
-    }
-    setBusy(true)
-    setError(null)
-    setStatus(`Uploading ${file.name}…`)
-    try {
-      await uploadModel(file)
-      await refreshModels()
-      setStatus(`Stored ${file.name} locally.`)
-    } catch (cause) {
-      const message = cause && typeof cause === 'object' && 'message' in cause ? String(cause.message) : 'Upload failed.'
-      setError(message)
-      setStatus('Upload did not complete.')
-    } finally {
-      setBusy(false)
-      if (fileInput.current) {
-        fileInput.current.value = ''
-      }
-    }
-  }
-
-  if (view === 'landing') return <LandingPage onOpenWorkspace={() => setView('workspace')} onUpload={() => { setView('workspace'); window.setTimeout(() => fileInput.current?.click(), 0) }} onSignIn={() => setView('login')} onRegister={() => setView('register')} />
-  if (view === 'login' || view === 'register') return <AuthPage mode={view} onBack={() => setView('landing')} onSwitch={() => setView(view === 'login' ? 'register' : 'login')} onAuthenticated={(nextSession) => { setSession(nextSession); setView('workspace') }} />
-
-  return <main className={`shell dashboard-shell ${sidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'} ${dashboardView === 'account' ? 'account-open' : ''}`}>
-    <aside className="dashboard-side-nav" aria-label="Workspace navigation"><button type="button" className="nav-toggle" aria-label={sidebarExpanded ? 'Collapse navigation' : 'Expand navigation'} onClick={() => setSidebarExpanded((current) => !current)}>☰</button><button type="button" className={dashboardView === 'overview' ? 'active' : ''} onClick={() => setDashboardView('overview')}><b>▦</b><span>Overview</span></button><a href="#models"><b>◫</b><span>Models</span></a><span className="nav-disabled"><b>⌘</b><span>Targets</span></span><span className="nav-disabled"><b>◎</b><span>Checks</span></span><span className="nav-disabled"><b>↗</b><span>Builds</span></span><button type="button" className={dashboardView === 'account' ? 'active nav-account' : 'nav-account'} onClick={() => setDashboardView('account')}><b>◉</b><span>Account</span></button></aside>
-    {dashboardView === 'account' && <section className="account-panel" aria-labelledby="account-title"><p className="eyebrow">ACCOUNT</p><h1 id="account-title">Your account</h1><dl><div><dt>Email</dt><dd>{session?.user.email ?? 'Not signed in'}</dd></div><div><dt>Organization</dt><dd>{session?.user.organization ?? 'Local workspace'}</dd></div></dl><p className="account-note">Profile editing and password changes need a dedicated account-update API and are not available yet.</p><button type="button" className="account-signout" onClick={() => { setSession(null); setView('landing') }}>Sign out</button></section>}
-    <header className="topbar"><button type="button" className="brand brand-button" onClick={() => setView('landing')}><span className="brand-mark">E</span> Edge AI Platform</button><div className="workspace-nav"><span className="status"><i /> {session ? session.user.email : 'Local uploads'}</span><button type="button" className="back-link" onClick={() => setView('landing')}>← Home</button></div></header>
-    <section className="dashboard-intro" aria-labelledby="dashboard-title"><div><p className="eyebrow">YOUR WORKSPACE</p><h1 id="dashboard-title">{session ? `Welcome back, ${session.user.organization}.` : 'Your deployment workspace.'}</h1><p>Manage model evidence, target checks, and build requests from one place. Status labels distinguish static assessment, successful builds, and real hardware proof.</p></div><div className="dashboard-actions"><label className="primary" htmlFor={fileInputId}>Upload ONNX <span>+</span></label><a href="#models">Review models →</a></div></section>
-    <section className="dashboard-summary" aria-label="Workspace summary"><article><span>MODELS</span><strong>{models.length}</strong><p>Uploaded ONNX files</p></article><article><span>TARGETS</span><strong>{hardware.length}</strong><p>Configured capability profiles</p></article><article><span>CHECKS</span><strong>{Object.keys(results).length}</strong><p>Static compatibility assessments</p></article><article><span>BUILDS</span><strong>{Object.keys(builds).length}</strong><p>Tracked build requests</p></article></section>
-    <section className="dashboard-next"><div><p className="eyebrow">NEXT BEST STEP</p><h2>{models.length ? 'Review a model before building.' : 'Add your first ONNX model.'}</h2><p>{models.length ? 'Run a target compatibility check to uncover static limitations before submitting an FP32 build request.' : 'Start with an ONNX file to inspect metadata, operators, inputs, and outputs safely.'}</p></div><a href={models.length ? '#models' : '#upload'}>{models.length ? 'Review models →' : 'Upload a model →'}</a></section>
-    <section className="hero" id="home">
-      <div className="eyebrow">MODEL DEPLOYMENT WORKSPACE</div>
-      <h1>From model file<br />to edge ready.</h1>
-      <p>Validate ONNX models, inspect their interfaces, and understand target compatibility from one workspace.</p>
-      <div className="hero-actions">
-        <input id={fileInputId} ref={fileInput} className="file-input" type="file" accept=".onnx,application/octet-stream" disabled={busy} onChange={(event) => void onFileSelected(event.target.files?.[0])} />
-        <label className="primary" htmlFor={fileInputId}>Upload a model <span>＋</span></label>
-        <span className="muted">{busy ? 'Uploading…' : 'ONNX files are stored on this machine'}</span>
-      </div>
-      <div className="hero-art" aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="chip"><span>AI</span><b>EDGE</b></div><div className="node node-a">ONNX</div><div className="node node-b">NPU</div><div className="node node-c">CPU</div></div>
-    </section>
-    <section className="section-head"><div><div className="eyebrow">WORKSPACE</div><h2>Deployment overview</h2></div><span className="mock-label">Local storage · compatibility still planned</span></section>
-    <section className="cards" aria-label="Platform sections">
-      <article className="card">
-        <div className="card-top"><span className="icon icon-0">◫</span><span className="card-count">{models.length}</span></div>
-        <h3>Uploaded models</h3>
-        <p>{models.length === 0 ? 'Models will appear after upload' : 'Stored under local uploads/models'}</p>
-        <a href="#models">View details <span>→</span></a>
-      </article>
-      <article className="card"><div className="card-top"><span className="icon icon-1">⌘</span><span className="card-count">—</span></div><h3>Hardware targets</h3><p>No targets registered yet</p><a href="#home">View details <span>→</span></a></article>
-      <article className="card"><div className="card-top"><span className="icon icon-2">◎</span><span className="card-count">—</span></div><h3>Compatibility reports</h3><p>Reports require a model and target</p><a href="#home">View details <span>→</span></a></article>
-      <article className="card"><div className="card-top"><span className="icon icon-3">↗</span><span className="card-count">—</span></div><h3>Deployment jobs</h3><p>No jobs available</p><a href="#home">View details <span>→</span></a></article>
-    </section>
-    <section className="upload-panel" id="upload" aria-labelledby="upload-title">
-      <div className="upload-symbol">↑</div>
-      <div>
-        <h2 id="upload-title">Start with a model</h2>
-        <p>Upload an ONNX file to validate its structure and inspect input and output metadata.</p>
-      </div>
-      <label className="secondary" htmlFor={fileInputId}>Choose ONNX file</label>
-    </section>
-    <p className={error ? 'upload-alert' : 'upload-status'} role={error ? 'alert' : 'status'}>{error ?? status}</p>
-    <section className="model-list" id="models" aria-labelledby="model-list-title">
-      <h2 id="model-list-title">Local models</h2>
-      {models.length === 0 ? <p className="muted">No ONNX files have been stored yet.</p> : (
-        <ul>
-          {models.map((model) => (
-            <li key={model.id}>
-              <strong>{model.fileName}</strong>
-              <span>Validation: {model.validationStatus}{model.validationCode ? ` (${model.validationCode})` : ''}</span>
-              {model.inspection && <>
-              <span>{model.inspection.fileSizeBytes} bytes · IR {model.inspection.irVersion}</span>
-              <span>Inputs: {formatTensors(model.inspection.inputs)}</span>
-              <span>Outputs: {formatTensors(model.inspection.outputs)}</span>
-              <span>Operators: {model.inspection.operators?.join(', ') || 'none'}</span>
-              <span>Operator counts: {Object.entries(model.inspection.operatorCounts ?? {}).map(([name, count]) => `${name}: ${count}`).join(', ') || 'none'}</span>
-              <span>Parameters: {model.inspection.parameterCount?.toLocaleString() ?? '0'}</span>
-              </>}
-              {!model.inspection && <span>{model.validationMessage ?? 'Inspection did not return metadata.'}</span>}
-              {model.inspection && hardware[0] && <><button type="button" disabled={busy} onClick={() => void runCompatibility(model.id)}>{busy ? 'Checking compatibility…' : `Check compatibility: ${hardware[0].name}`}</button>{results[model.id] && <><CompatibilityCard result={results[model.id]} profile={hardware[0]} inspection={model.inspection} />{results[model.id].status !== 'INCOMPATIBLE' && <div className="build-panel"><h4>Build for {hardware[0].name}</h4>{results[model.id].status === 'WARNING' && <p className="build-warning">Compatibility has warnings. The build can be attempted, but it is not guaranteed.</p>}<label>Workspace (MiB)<input aria-label={`Workspace for ${model.fileName}`} type="number" min="1" max="1024" value={workspaceMiB} disabled={busy} onChange={(event) => setWorkspaceMiB(Math.max(1, Math.min(1024, Number(event.target.value) || 1)))} /></label><small>FP32 only. A successful engine build does not verify runtime inference.</small><button type="button" disabled={busy} onClick={() => void requestBuild(model.id)}>{busy ? 'Submitting build…' : 'Queue FP32 build'}</button>{builds[model.id] && <p aria-live="polite"><strong>Build {builds[model.id].status}</strong> · {builds[model.id].stage}<br />{builds[model.id].message}<br /><small>Polling for worker updates.</small></p>}</div>}</>}</>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-    <footer>Edge AI Platform <span>Hardware compilation and device deployment are not available yet.</span></footer>
-  </main>
+  const [page, setPage] = useState<Page>('dashboard'), [guest, setGuest] = useState(false), [authRoute, setAuthRoute] = useState<'login' | 'register' | null>(() => location.hash === '#register' ? 'register' : location.hash === '#login' ? 'login' : null), [models, setModels] = useState<ModelSummary[]>([]), [hardware, setHardware] = useState<HardwareProfile[]>([]), [jobs, setJobs] = useState<BuildJob[]>([]), [collapsed, setCollapsed] = useState(false), [session, setSession] = useState<AuthSession | null>(() => { try { return JSON.parse(sessionStorage.getItem('edge-session') ?? 'null') } catch { return null } }), [notice, setNotice] = useState<Notice>(null)
+  const load = async () => { try { const [nextModels, nextHardware] = await Promise.all([listModels(), listHardware()]); setModels(nextModels); setHardware(nextHardware) } catch (cause) { setNotice({ tone: 'error', text: errorText(cause) }) } }
+  useEffect(() => { void load() }, [])
+  const navigate = (next: Page) => { setGuest(true); setPage(next) }
+  const enterAuth = (mode: 'login' | 'register') => { location.hash = mode; setAuthRoute(mode) }
+  const leaveAuth = () => { location.hash = ''; setAuthRoute(null); setGuest(true) }
+  const persist = (next: AuthSession) => { sessionStorage.setItem('edge-session', JSON.stringify(next)); setSession(next); leaveAuth(); setPage('dashboard') }
+  const refreshJobs = async () => setJobs(await Promise.all(jobs.map(job => getBuild(job.id).catch(() => job))))
+  if (authRoute) return <Auth mode={authRoute} done={persist} back={leaveAuth} switchMode={enterAuth} />
+  if (!guest && !session) return <Landing open={() => setGuest(true)} authenticate={enterAuth} />
+  const content = page === 'models' ? <Models models={models} reload={load} deploy={() => navigate('deployments')} notify={setNotice} /> : page === 'deployments' ? <Deployment models={models} hardware={hardware} reload={load} created={job => setJobs(current => [job, ...current])} notify={setNotice} go={navigate} /> : page === 'builds' ? <Builds jobs={jobs} refresh={refreshJobs} /> : page === 'devices' ? <><Header eyebrow="Hardware inventory" title="Devices" description="Connected devices will appear here after tenant device APIs are available." /><Empty title="No device connection API" body="The current edge-agent enrollment foundation is an admin control-plane adapter, not a user workspace device API. Device setup cannot be performed here yet." action={<button className="secondary-button" disabled>Connect device</button>} /></> : page === 'benchmarks' ? <><Header eyebrow="Performance evidence" title="Benchmarks" description="Benchmark results require a real device execution and measurement API." /><Empty title="No benchmark results" body="No performance values are shown because this project does not yet run benchmark jobs." /></> : page === 'artifacts' ? <><Header eyebrow="Build outputs" title="Artifacts" description="Build artifact download and retention APIs are not implemented." /><Empty title="No artifacts available" body="A local build may create files on a configured Jetson, but the workspace cannot list or download them yet." /></> : page === 'account' ? <><Header eyebrow="Workspace access" title="Account" description="Local development identity details."><button className="secondary-button" onClick={() => { sessionStorage.removeItem('edge-session'); setSession(null); navigate('dashboard') }}>Sign out</button></Header><section className="account-card"><span className="avatar">{session?.user.email[0]?.toUpperCase() ?? 'G'}</span><div><strong>{session?.user.email ?? 'Guest workspace'}</strong><p>{session?.user.organization ?? 'Sign in to associate a local account.'}</p></div></section><p className="muted">Authentication is local development only. Models, builds, and devices are not yet tenant-isolated.</p></> : <><Header eyebrow="Workspace overview" title="Dashboard" description="A factual view of what the current backend can inspect and track."><button className="primary-button" onClick={() => navigate('deployments')}>New deployment</button></Header><section className="metric-grid"><article><span>Models</span><strong>{models.length}</strong><small>stored by backend</small></article><article><span>Valid analyses</span><strong>{models.filter(item => item.validationStatus === 'VALID').length}</strong><small>ONNX inspection</small></article><article><span>Hardware targets</span><strong>{hardware.length}</strong><small>configured profiles</small></article><article><span>Session builds</span><strong>{jobs.length}</strong><small>tracked here</small></article></section><section className="dashboard-card"><h2>Start a deployment decision</h2><p>Select an inspected model, run its static compatibility check against a registered target, then create an FP32 build request. Hardware execution and benchmarks remain separate, unavailable steps.</p><button className="primary-button" onClick={() => navigate('deployments')}>New deployment</button></section><section className="recent"><h2>Recent models</h2>{models.slice(0, 4).map(item => <div key={item.id}><strong>{item.fileName}</strong><Status value={item.validationStatus === 'VALID' ? 'ANALYZED' : 'INVALID'} /></div>)}{models.length === 0 && <p className="muted">No uploaded models.</p>}</section></>
+  return <div className={`app-shell ${collapsed ? 'nav-collapsed' : ''}`}><aside className="app-nav"><div className="nav-top"><button className="brand-button" onClick={() => navigate('dashboard')}><b>E</b><span>Edge AI Core</span></button><button className="collapse-button" aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'} onClick={() => setCollapsed(value => !value)}>☰</button></div><button className="workspace-switch"><span>▾</span><span>Default workspace</span></button><nav aria-label="Main navigation">{nav.map(item => <button aria-label={item.label} key={item.page} className={page === item.page ? 'active' : ''} onClick={() => navigate(item.page)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</nav><button className={`account-button ${page === 'account' ? 'active' : ''}`} onClick={() => navigate('account')}><span className="avatar">{session?.user.email[0]?.toUpperCase() ?? 'G'}</span><span><strong>{session?.user.email ?? 'Account'}</strong><small>{session ? 'Local account' : 'Guest workspace'}</small></span></button></aside><main className="app-content"><div className="content-width">{notice && <div className={`notice ${notice.tone}`} role="status">{notice.text}<button aria-label="Dismiss message" onClick={() => setNotice(null)}>×</button></div>}{content}</div></main></div>
 }
