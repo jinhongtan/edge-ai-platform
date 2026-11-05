@@ -49,6 +49,13 @@ Last updated: 2026-10-22
 - Passwords are salted PBKDF2-HMAC-SHA-256 hashes; plaintext passwords and raw session tokens are never persisted. Sessions are memory-only and expire after the configured TTL.
 - This does not yet enforce ownership or tenant isolation on models, builds, or devices; do not use it as production authentication until database-backed identities and authorization are added.
 
+### Core workspace UI
+
+- The React UI now has a responsive, fixed, collapsible workspace navigation with Dashboard, Models, Devices, New deployment, Builds, Benchmarks, Artifacts, and Account views.
+- The model library and deployment workflow use the implemented model upload, hardware-profile, compatibility, and build-request endpoints.
+- The guided workflow only creates an FP32 build request after a real static compatibility result. It clearly distinguishes that request from deployment, runtime validation, and benchmarking.
+- Devices, benchmarks, artifacts, and deployment execution are intentionally empty or disabled UI states until their corresponding user-facing APIs exist; the UI does not invent device data or verification results.
+
 ## Current storage and runtime model
 
 - Model and compatibility metadata use local filesystem persistence under `backend/uploads/models/` by default.
